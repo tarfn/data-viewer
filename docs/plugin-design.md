@@ -92,6 +92,13 @@ built-ins. Database authorization remains the final authority on allowed actions
 Kafka should receive a stream capability with explicit stop/backpressure behavior;
 HTTP should receive a request/response contract. Neither belongs in `SQLQuerier`.
 
+Their future UI workspaces are now illustrated in the prototype. Kafka resource
+navigation is profile → Topics → topic; HTTP uses API profile → Requests → request.
+HTTP profiles do not need a persistent connected Session simply to save a base
+URL. Connection factories and lifecycle must be capability-specific rather than
+forcing all tools into Ping/Close. Detailed future request contracts are in the
+[handoff](frontend-handoff.md), with research in [UI decisions](ui-research.md).
+
 ## External plugins: design direction, deferred
 
 If user-installed plugins become necessary, evaluate separate executable

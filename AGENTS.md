@@ -27,6 +27,12 @@ Kafka/HTTP, record editing, arbitrary mongosh scripts, advanced SQL parsing,
 external installable plugins, and credential persistence are deferred. Tabs and
 history are stretch goals. A reviewer should not demand them for this release.
 
+The documentation prototype also explores Kafka/HTTP forms and workspaces at the
+user's request. These are future UI designs, not shipped integrations or added
+0.0.1 backend requirements. Research evidence and limitations are recorded in
+[UI research](docs/ui-research.md); distinguish simulated interactions from real
+connectivity and actual integration tests.
+
 Start with [README.md](README.md) and the linked design documents. Planned APIs,
 screens, and prototype behavior are not shipped features. Do not scaffold the
 application during documentation-only tasks. Update this status as implementation

@@ -11,6 +11,9 @@ a frontend implementer builds these screens using mock responses. The
 [interactive wireframe](ui-prototype.html) is a dependency-free illustration,
 not a Wails application or a database client. Open the file in a desktop browser.
 Its contents are fictional and it performs no network requests or persistence.
+It now includes PostgreSQL/MongoDB creation forms and future Kafka/HTTP workspace
+designs. [Research and source evidence](ui-research.md) explain the choices and
+limitations. Kafka/HTTP production integrations remain outside release 0.0.1.
 
 ## Workspace layout
 
@@ -87,10 +90,17 @@ Do not show a fake connected database or working results on first launch.
 
 ### 2. Add or edit a connection
 
-Use a dialog with PostgreSQL/MongoDB selection, profile name, connection fields,
+Keep **+ Add connection** visible in the sidebar header, even with existing
+profiles. Use a dialog with PostgreSQL/MongoDB selection, profile name, connection fields,
 Test connection, Cancel, and Save and connect. Saving settings must not imply the
 connection succeeded. Show field errors next to their fields and connection
 errors in a dialog summary. Keep the dialog open after a failed attempt.
+
+The prototype also offers Kafka/HTTP choices marked **Future design**. Its
+**Validate form (demo)** action validates inputs, not connectivity; **Add demo
+profile** adds fictional resources in memory and discards all credential fields
+when the dialog closes. Reloading removes these profiles. In the actual app,
+Save profile, Test connection, and Save and connect need distinct outcomes.
 
 PostgreSQL fields: host, port, database, username, password, TLS mode and supported
 certificate options. MongoDB: URI entry plus optional database override. Explain
@@ -100,6 +110,12 @@ saved profile with a raw credential-bearing URI.
 Test does not create a lasting active session. Show Connecting while testing or
 opening; prevent duplicate submissions and offer cancellation for slow attempts.
 Use the same backend validation for Test and Connect.
+
+For future Kafka setup, show bootstrap servers and security protocol first,
+revealing SASL mechanism/username/password only when SASL is enabled. TLS trust
+and client certificate options belong in Advanced settings. For HTTP, show a
+profile name/base URL and explain that the profile groups requests, rather than
+opening a persistent connection. Auth belongs to session/request configuration.
 
 ### 3. Explore PostgreSQL
 
@@ -135,6 +151,62 @@ numbers. Byte-limited responses must say why output stopped.
 
 Do not show a Next button until a real continuation contract exists. Initially,
 let users refine their query or explicitly increase the allowed preview limit.
+
+### 6. Kafka workspace (future)
+
+```text
+Development Kafka → Topics → orders.created
++------------------------------------------------------------------+
+| Partition [All]  Start [Latest]   Max records [100]  Duration [30s] |
+| [Consume] [Stop]                        Inspection: no group commits|
++------------------------------------------------------------------+
+| Partition | Offset | Key        | Timestamp | Value preview        |
+| 0         | 24     | order-1042 | ...       | {"event": ...}        |
++------------------------------------------------------------------+
+| Selected message: headers, encoding, full key/value                 |
++------------------------------------------------------------------+
+```
+
+Selecting a topic does not automatically consume. Latest, Earliest available,
+and Specific offset are different starting intents; explicit offset requires
+one partition. Stop is separate from disconnect. Bounded record/duration/byte
+limits prevent unlimited accumulation. Keep current topic/cluster visible.
+
+Distinguish Idle, Consuming, Stopped, Empty, Truncated, and Failed. A quiet topic
+is not an error. Preview inspection must not commit group offsets or join a
+production application's consumer group. Do not imply offsets form a global
+topic-wide sequence or guarantee consecutive offsets after compaction/retention.
+
+The details pane shows partition/offset, timestamp, headers, decoded value, and
+raw fallback. Produce is an independent, deliberately invoked form. The current
+prototype contains simplified fixed sample messages and a fake acknowledgement;
+it does not implement streaming, broker verification, decoders, or delivery.
+
+### 7. HTTP workspace (future)
+
+```text
+Example API → Requests → GET /health
++------------------------------------------------------------------+
+| [GET v] [https://api.example.test/health             ] [Send][Cancel]|
+| [Params] [Headers] [Authorization] [Body]                          |
+| Editable key/value controls or appropriate body editor             |
+| Effective URL and auth source                                     |
++------------------------------------------------------------------+
+| Response: 200 OK · elapsed · bytes       [Body] [Headers]           |
+| { "status": "ok" }                                                |
++------------------------------------------------------------------+
+```
+
+The saved request stays under its API profile/folder. Keep method, effective URL,
+and Send visible; show sensitive tokens in masked Authorization inputs. Separate
+response body and headers and distinguish received 4xx/5xx from DNS/TLS/network
+failure, timeout, and cancellation. Preserve the composed request on errors.
+
+The prototype demonstrates simplified Params/Headers textareas, None/Bearer auth,
+JSON bodies for POST/PUT/PATCH, URL encoding, and Send/Cancel. Its status/results
+are simulated. Production work should replace key/value textareas with enabled
+rows, define Content-Type behavior, avoid cross-origin auth leakage on redirects,
+and bound response memory. Cancel does not undo an already completed mutation.
 
 ## States and recovery
 
@@ -206,6 +278,13 @@ completion menu or dialog is open. Do not steal ordinary editor typing shortcuts
 9. Expand both connections and verify every schema/collection remains under its
    own database. Collapse/reopen either branch without moving the other branch
    or changing the active workspace. Repeat with keyboard navigation.
+10. Open Add connection, inspect each type's form, validate bad/good input, add a
+    demo profile, and verify its children stay under it. Escape restores focus;
+    reopening does not restore password/URI/token contents.
+11. In the future Kafka design, select a topic, inspect messages, stop a pending
+    sample stream, and try an offset without selecting a partition.
+12. In the future HTTP design, compose a URL with params, change request settings,
+    send/cancel a simulated request, and inspect response headers.
 
 The wireframe demonstrates layout only and does not validate these production
 behaviors. Verify them in Wails once real bindings and database operations exist.

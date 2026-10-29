@@ -129,3 +129,32 @@ promise automatic retries of user SQL: its side effects may already have happene
 
 Backend completion and end-to-end completion are separate milestones. The Go
 developer can finish and review backend work without pretending the UI is done.
+
+## Future Kafka and HTTP contracts (design only)
+
+The prototype now explores these capabilities; neither is a 0.0.1 backend
+requirement. Keep them separate from ExecuteSQL and FindDocuments.
+
+| Capability | Proposed inputs | Lifecycle / result requirements |
+| --- | --- | --- |
+| Kafka topic metadata | Connection ID, topic | Partitions, earliest/latest positions, permitted metadata; no group mutation |
+| Start topic inspection | Connection/request IDs, topic, partitions, start mode, optional per-partition offsets, record/byte/duration caps | Start acknowledgement, bounded batches, terminal stopped/timeout/error/cap outcome |
+| Stop inspection | Connection/request IDs | Cancel polling and release consumer; no offset commits |
+| Produce message | Connection/request IDs, topic, optional partition/key/headers, payload/encoding | Broker acknowledgement or explicit uncertain-delivery outcome; no blind retry |
+| Send HTTP request | Profile/request IDs, explicit effective URL/method, ordered duplicate-capable params/headers, auth reference, typed body, timeout/byte cap | Response status/headers/body metadata or transport/canceled/timeout error |
+
+Kafka offsets must cross JSON as strings to preserve 64-bit precision; carry
+partition and topic with every message. Future streaming needs bounded queues,
+backpressure, dropped-count policy, and a request-bound event channel, not an
+unbounded array returned only at the end. Do not auto-join existing consumer
+groups for inspection. Review the chosen Go client's actual partition/seek
+semantics rather than copying another language's API mechanically.
+
+HTTP profile creation does not establish a connected session. Resolve URL/auth
+before sending, retain secret values only in the session, never echo credentials
+in results, and specify redirect policy for sensitive headers. Preserve HTTP
+4xx/5xx as received responses, distinct from transport errors. Bound body reads
+and close bodies. Cancellation does not imply the server rolled back a mutation.
+
+See [the UI research](ui-research.md) for primary-source evidence, UI states,
+and design proposals that remain unimplemented.

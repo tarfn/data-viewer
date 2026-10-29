@@ -8,7 +8,7 @@
     :root { color-scheme: light; font: 14px/1.5 system-ui, sans-serif; color: #213047; background: #eef2f6; }
     * { box-sizing: border-box; }
     body { margin: 0; }
-    button, input, textarea { font: inherit; }
+    button, input, textarea, select { font: inherit; }
     button { cursor: pointer; border: 1px solid #c6d0dd; border-radius: 6px; padding: 7px 12px; background: white; color: #213047; }
     button:hover { background: #eaf0f6; }
     button:disabled { opacity: .55; cursor: default; }
@@ -22,6 +22,8 @@
     .layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: calc(100vh - 145px); }
     aside { background: #f7f9fc; border-right: 1px solid #d8e0ea; padding: 24px 12px; min-width: 0; }
     .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #53657a; }
+    .explorer-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .explorer-head button { font-size: 12px; padding: 6px 8px; }
     .tree, .tree ul { list-style: none; margin: 0; padding: 0; }
     .tree { margin-top: 16px; }
     .tree ul { margin-left: 16px; border-left: 1px solid #d8e0ea; padding-left: 4px; }
@@ -54,6 +56,31 @@
     th { background: #f7f9fc; font-size: 12px; color: #53657a; }
     pre { margin: 0; padding: 18px; overflow: auto; font: 13px/1.8 ui-monospace, monospace; }
     .hint { padding: 12px 16px; margin: 0; background: #f0f5ff; color: #294e88; }
+    .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 16px; }
+    .fields label, .field label { font-size: 12px; color: #53657a; }
+    input, select { width: 100%; padding: 9px; border: 1px solid #b7c4d4; border-radius: 5px; background: white; color: #213047; }
+    .wide { grid-column: 1 / -1; }
+    .field { margin-bottom: 14px; }
+    .inline { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .inline select { width: auto; }
+    .request-url { flex: 1; min-width: 120px; }
+    .subnav { display: flex; gap: 6px; flex-wrap: wrap; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; }
+    .subnav [aria-pressed="true"] { background: #e3edff; border-color: #2457c5; color: #1946a6; }
+    .panel-pad { padding: 16px; }
+    .panel-pad textarea { min-height: 100px; }
+    .clickable { cursor: pointer; }
+    .clickable:hover { background: #f0f5ff; }
+    details { margin: 16px; }
+    summary { cursor: pointer; font-weight: 600; }
+    dialog { width: min(680px, calc(100% - 32px)); max-height: calc(100vh - 40px); border: 1px solid #c6d0dd; border-radius: 12px; padding: 24px; color: #213047; }
+    dialog::backdrop { background: rgb(18 31 50 / .4); }
+    .dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .type-picker { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 16px 0; }
+    .type-picker [aria-pressed="true"] { background: #e3edff; border-color: #2457c5; }
+    .type-picker button { padding: 12px 4px; }
+    .type-picker small { display: block; color: #53657a; font-size: 10px; }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+    .empty { padding: 24px; color: #53657a; }
     footer { padding: 12px 24px; border-top: 1px solid #d8e0ea; background: white; color: #53657a; }
     [hidden] { display: none !important; }
     @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } aside { border-right: 0; border-bottom: 1px solid #d8e0ea; padding: 12px 16px; max-height: 320px; overflow-y: auto; } main { padding: 16px; } header { flex-wrap: wrap; } }
@@ -67,13 +94,13 @@
   </header>
   <div class="layout">
     <aside aria-label="Database explorer">
-      <div class="eyebrow">Connections · sample profiles</div>
+      <div class="explorer-head"><div class="eyebrow">Connections</div><button id="add-connection">+ Add connection</button></div>
       <ul class="tree" role="tree" aria-label="Connections and database resources" id="tree"></ul>
-      <p class="muted">Expand a connection and its database, then select a table or collection. Arrow keys navigate the tree.</p>
+      <p class="muted">Expand a profile, then select a table, collection, topic, or request. Arrow keys navigate the tree.</p>
     </aside>
     <main>
       <div class="heading"><div><h2 id="resource">public.users</h2><div class="muted" id="target">Local PostgreSQL / appdb</div></div><span class="eyebrow">Read and inspect</span></div>
-      <div class="switcher" role="group" aria-label="Workspace view">
+      <div class="switcher" id="database-views" role="group" aria-label="Workspace view">
         <button id="query-view" aria-pressed="true">SQL workspace</button>
         <button id="structure-view" aria-pressed="false">Structure</button>
       </div>
@@ -93,14 +120,77 @@
         <div class="card-head"><strong id="structure-title">Columns</strong><span class="muted">Illustrative metadata</span></div>
         <div id="structure"></div>
       </section>
+      <section id="kafka-panel" aria-label="Kafka workspace" hidden>
+        <p class="hint">Kafka · future integration design. All broker metadata and messages below are fictional.</p>
+        <div class="card">
+          <div class="card-head"><strong>Browse topic messages</strong><span class="muted">Inspection only · no group offset commits</span></div>
+          <div class="fields">
+            <div><label for="kafka-partition">Partition</label><select id="kafka-partition"><option value="all">All partitions</option><option value="0">Partition 0</option><option value="1">Partition 1</option></select></div>
+            <div><label for="kafka-start">Start position</label><select id="kafka-start"><option value="latest">Latest</option><option value="earliest">Earliest available</option><option value="offset">Specific offset (one partition)</option></select></div>
+            <div id="kafka-offset-field" hidden><label for="kafka-offset">Offset</label><input id="kafka-offset" type="text" inputmode="numeric" pattern="[0-9]+" required value="0"></div>
+            <div><label for="kafka-limit">Maximum messages</label><input id="kafka-limit" type="number" min="1" max="500" required value="100"></div>
+            <div><label for="kafka-duration">Maximum duration (seconds)</label><input id="kafka-duration" type="number" min="1" max="60" required value="30"></div>
+          </div>
+          <div class="toolbar"><button class="primary" id="kafka-start-button">Simulate consume</button><button id="kafka-stop" disabled>Stop</button><span class="muted">Bounded buffer · 10 MiB proposed cap</span></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><strong>Messages</strong><span id="kafka-state" role="status" aria-live="polite">Idle · choose a start position</span></div>
+          <div class="scroll"><table><thead><tr><th>Partition</th><th>Offset</th><th>Key</th><th>Value preview</th></tr></thead><tbody id="kafka-messages"></tbody></table></div>
+          <div id="kafka-empty" class="empty">No messages sampled. Start a bounded inspection to see sample records.</div>
+          <details open><summary>Selected message</summary><pre id="kafka-detail">Select a message to inspect its timestamp, headers, and value.</pre></details>
+        </div>
+        <div class="card"><details><summary>Produce a message · future design</summary>
+          <p class="muted">A separate action from consuming. Demo only; nothing is published.</p>
+          <div class="field"><label for="produce-key">Key (optional)</label><input id="produce-key" value="order-1042"></div>
+          <div class="field"><label for="produce-value">Value</label><textarea id="produce-value">{ "event": "order.created", "id": 1042 }</textarea></div>
+          <button id="produce-button">Simulate produce</button><p id="produce-state" role="status"></p>
+        </details></div>
+      </section>
+      <section id="http-panel" aria-label="HTTP workspace" hidden>
+        <p class="hint">HTTP · future integration design. Send displays a simulated response; no network request is made.</p>
+        <div class="card">
+          <div class="card-head"><strong>Request builder</strong><span class="muted">API profile · not a persistent connection</span></div>
+          <div class="panel-pad inline"><label for="http-method">Method</label><select id="http-method"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select><label for="http-url">URL</label><input class="request-url" id="http-url" type="url" value="https://api.example.test/health"><button class="primary" id="http-send">Simulate Send</button><button id="http-cancel" disabled>Cancel</button></div>
+          <div class="subnav" role="group" aria-label="Request settings"><button data-request-tab="params" aria-pressed="true">Params</button><button data-request-tab="headers" aria-pressed="false">Headers</button><button data-request-tab="auth" aria-pressed="false">Authorization</button><button data-request-tab="body" aria-pressed="false">Body</button></div>
+          <div class="panel-pad" id="request-params"><label for="http-params">Query parameters (name=value, one per line)</label><textarea id="http-params" placeholder="limit=100"></textarea><p class="muted">The production UI should provide enabled key/value rows and show the final encoded URL.</p></div>
+          <div class="panel-pad" id="request-headers" hidden><label for="http-headers">Headers (name: value, one per line)</label><textarea id="http-headers">Accept: application/json</textarea></div>
+          <div class="panel-pad" id="request-auth" hidden><label for="http-auth">Authentication</label><select id="http-auth"><option value="none">No auth</option><option value="bearer">Bearer token</option></select><div id="http-token-field" class="field" hidden><label for="http-token">Token · session only</label><input id="http-token" type="password" autocomplete="off"></div></div>
+          <div class="panel-pad" id="request-body" hidden><label for="http-body">Raw JSON body</label><textarea id="http-body">{ "item": "sample", "quantity": 1 }</textarea><p class="muted">Body content is enabled for POST, PUT, and PATCH in this prototype.</p></div>
+          <p class="hint" id="http-final-url">Target: https://api.example.test/health</p>
+        </div>
+        <div class="card">
+          <div class="card-head"><strong>Response</strong><span id="http-state" role="status" aria-live="polite">Not sent</span></div>
+          <div class="subnav" role="group" aria-label="Response view"><button data-response-tab="body" aria-pressed="true">Body</button><button data-response-tab="headers" aria-pressed="false">Headers</button></div>
+          <pre id="http-response">Send a simulated request to see an example response.</pre>
+          <pre id="http-response-headers" hidden>No response headers yet.</pre>
+        </div>
+      </section>
     </main>
   </div>
+  <dialog id="connection-dialog" aria-labelledby="connection-title" aria-describedby="connection-description">
+    <div class="dialog-head"><h2 id="connection-title">Add connection</h2><button id="close-dialog" aria-label="Close connection dialog">✕</button></div>
+    <p id="connection-description" class="muted">Choose a tool and configure a profile. This prototype adds sample resources in memory only; credentials are not saved or transmitted.</p>
+    <div class="type-picker" role="group" aria-label="Connection type">
+      <button data-kind="postgres" aria-pressed="true">PostgreSQL<small>Release 0.0.1</small></button><button data-kind="mongo" aria-pressed="false">MongoDB<small>Release 0.0.1</small></button><button data-kind="kafka" aria-pressed="false">Kafka<small>Future design</small></button><button data-kind="http" aria-pressed="false">HTTP<small>Future design</small></button>
+    </div>
+    <form id="connection-form">
+      <div class="field"><label for="profile-name">Profile name</label><input id="profile-name" required maxlength="80" value="New PostgreSQL"></div>
+      <div id="connection-fields"></div>
+      <p id="connection-feedback" role="status" aria-live="polite">No test performed. Demo forms do not verify connectivity.</p>
+      <div class="dialog-actions"><button type="button" id="test-connection">Validate form (demo)</button><button type="button" id="cancel-dialog">Cancel</button><button class="primary" type="submit">Add demo profile</button></div>
+    </form>
+  </dialog>
   <footer id="status" role="status" aria-live="polite">Ready · select a sample profile, switch views, or simulate Run/Cancel.</footer>
   <script>
     const $ = id => document.getElementById(id);
     let kind = 'postgres';
     let selectedResource = 'pg-users';
     let timer = null;
+    let kafkaTimer = null;
+    let httpTimer = null;
+    let dialogKind = 'postgres';
+    let profileSequence = 0;
+    let dialogOpener = null;
     const samples = {
       postgres: {
         resource: 'public.users', target: 'Local PostgreSQL / appdb', view: 'SQL workspace', structureView: 'Structure', title: 'SQL editor', label: 'Statement', query: 'SELECT id, name, email FROM public.users;',
@@ -125,7 +215,11 @@
         kind: 'mongo', resource: 'shop.orders', query: '{ "status": "paid" }',
         results: '<pre>{\n  "_id": { "$oid": "507f1f77bcf86cd799439012" },\n  "status": "paid",\n  "total": { "$numberDecimal": "49.90" }\n}</pre>',
         structure: '<p class="hint">Fields observed in 1 sample document. Other fields may exist.</p><div class="scroll"><table><thead><tr><th>Observed path</th><th>Observed types</th></tr></thead><tbody><tr><td>_id</td><td>ObjectID</td></tr><tr><td>status</td><td>string</td></tr><tr><td>total</td><td>decimal128</td></tr></tbody></table></div>'
-      }
+      },
+      'kafka-orders': { kind: 'kafka', resource: 'orders.created', target: 'Development Kafka / demo cluster' },
+      'kafka-payments': { kind: 'kafka', resource: 'payments.received', target: 'Development Kafka / demo cluster' },
+      'http-health': { kind: 'http', resource: 'GET /health', target: 'Example API', method: 'GET', url: 'https://api.example.test/health' },
+      'http-orders': { kind: 'http', resource: 'POST /orders', target: 'Example API', method: 'POST', url: 'https://api.example.test/orders' }
     };
     const hierarchy = [
       { id: 'postgres', label: 'Local PostgreSQL', type: 'connection', children: [
@@ -140,6 +234,18 @@
         { id: 'mongo-shop', label: 'shop', type: 'database', children: [
           { id: 'mongo-customers', label: 'customers', type: 'collection' },
           { id: 'mongo-orders', label: 'orders', type: 'collection' }
+        ] }
+      ] },
+      { id: 'kafka', label: 'Development Kafka', type: 'future', children: [
+        { id: 'kafka-topics', label: 'Topics', type: 'folder', children: [
+          { id: 'kafka-orders', label: 'orders.created', type: 'topic' },
+          { id: 'kafka-payments', label: 'payments.received', type: 'topic' }
+        ] }
+      ] },
+      { id: 'http', label: 'Example API', type: 'future', children: [
+        { id: 'http-requests', label: 'Requests', type: 'folder', children: [
+          { id: 'http-health', label: 'GET /health', type: 'request' },
+          { id: 'http-orders', label: 'POST /orders', type: 'request' }
         ] }
       ] }
     ];
@@ -165,7 +271,7 @@
           // Both branches stay in place; opening one never moves the other's children.
           const group = document.createElement('ul'); group.id = node.id + '-children';
           group.setAttribute('role', 'group');
-          const expanded = node.id !== 'mongo' && node.id !== 'mongo-shop';
+          const expanded = node.expanded ?? ['postgres', 'pg-appdb', 'pg-public'].includes(node.id);
           item.setAttribute('aria-expanded', String(expanded));
           item.setAttribute('aria-controls', group.id); group.hidden = !expanded;
           buildTree(node.children, group); item.append(group);
@@ -189,15 +295,46 @@
     function stop() {
       clearTimeout(timer); timer = null;
       $('run').disabled = false; $('cancel').disabled = true;
+      clearTimeout(kafkaTimer); kafkaTimer = null;
+      $('kafka-start-button').disabled = false; $('kafka-stop').disabled = true;
+      clearTimeout(httpTimer); httpTimer = null;
+      $('http-send').disabled = false; $('http-cancel').disabled = true;
     }
     function select(resourceId) {
       stop(); selectedResource = resourceId; kind = resources[resourceId].kind;
       const sample = activeSample();
       $('tree').querySelectorAll('[role="treeitem"]').forEach(node => {
         node.setAttribute('aria-selected', String(node.id === resourceId));
+        node.tabIndex = node.id === resourceId ? 0 : -1;
       });
       $('resource').textContent = sample.resource;
       $('target').textContent = sample.target;
+      const database = kind === 'postgres' || kind === 'mongo';
+      $('database-views').hidden = !database;
+      $('query-panel').hidden = !database;
+      $('structure-panel').hidden = true;
+      $('kafka-panel').hidden = kind !== 'kafka';
+      $('http-panel').hidden = kind !== 'http';
+      $('http-token').value = '';
+      if (kind === 'kafka') {
+        $('kafka-messages').replaceChildren(); $('kafka-empty').hidden = false;
+        $('kafka-state').textContent = 'Idle · topic selected';
+        $('kafka-detail').textContent = 'Select a message to inspect its timestamp, headers, and value.';
+        $('produce-state').textContent = '';
+      }
+      if (kind === 'http') {
+        $('http-method').value = sample.method; $('http-url').value = sample.url;
+        $('http-params').value = ''; $('http-auth').value = 'none';
+        $('http-token-field').hidden = true;
+        $('http-response').textContent = 'Send a simulated request to see an example response.';
+        $('http-response-headers').textContent = 'No response headers yet.';
+        $('http-state').textContent = 'Not sent'; updateHTTP();
+      }
+      if (!database) {
+        $('status').textContent = sample.target + ' · future design · no live connection.';
+        return;
+      }
+      view(false);
       $('query-view').textContent = sample.view;
       $('structure-view').textContent = sample.structureView;
       $('structure-title').textContent = kind === 'postgres' ? 'Columns' : 'Sampled fields';
@@ -211,13 +348,14 @@
       $('status').textContent = 'Demo profile selected: ' + sample.target + '. No live connection.';
     }
     function view(structure) {
+      if (kind !== 'postgres' && kind !== 'mongo') return;
       $('query-panel').hidden = structure;
       $('structure-panel').hidden = !structure;
       $('query-view').setAttribute('aria-pressed', String(!structure));
       $('structure-view').setAttribute('aria-pressed', String(structure));
     }
     function run() {
-      if (timer !== null || $('query-panel').hidden) return;
+      if (timer !== null || $('query-panel').hidden || $('connection-dialog').open) return;
       $('run').disabled = true; $('cancel').disabled = false;
       $('result-status').textContent = 'Previous sample · simulation running';
       $('status').textContent = 'Simulating a request. Cancel is available.';
@@ -227,6 +365,195 @@
         $('status').textContent = 'Simulation complete. No query was sent to a database.';
       }, 1200);
     }
+    const connectionForms = {
+      postgres: '<div class="fields"><div><label for="conn-host">Host</label><input id="conn-host" required value="localhost"></div><div><label for="conn-port">Port</label><input id="conn-port" type="number" min="1" max="65535" required value="5432"></div><div><label for="conn-database">Database</label><input id="conn-database" required value="appdb"></div><div><label for="conn-user">Username</label><input id="conn-user" required value="viewer" autocomplete="off"></div><div><label for="conn-password">Password · session only</label><input id="conn-password" type="password" autocomplete="off"></div><div><label for="conn-tls">TLS mode</label><select id="conn-tls"><option>verify-full</option><option>verify-ca</option><option>require</option><option>disable (local development)</option></select></div></div>',
+      mongo: '<div class="field"><label for="conn-uri">MongoDB URI · may contain credentials</label><input id="conn-uri" type="password" required value="mongodb://localhost:27017" autocomplete="off"><p class="muted">Accept mongodb:// or mongodb+srv://. The raw URI is discarded when this demo closes.</p></div><div class="field"><label for="conn-database">Initial database</label><input id="conn-database" required value="shop"></div>',
+      kafka: '<div class="field"><label for="conn-brokers">Bootstrap servers (comma separated)</label><input id="conn-brokers" required value="localhost:9092"></div><div class="fields"><div><label for="conn-security">Security</label><select id="conn-security"><option value="SASL_SSL">SASL + TLS</option><option value="SSL">TLS</option><option value="PLAINTEXT">Plaintext (local development)</option></select></div><div id="sasl-method-field"><label for="conn-sasl">SASL mechanism</label><select id="conn-sasl"><option>SCRAM-SHA-256</option><option>SCRAM-SHA-512</option><option>PLAIN</option></select></div><div id="sasl-user-field"><label for="conn-user">SASL username</label><input id="conn-user" required autocomplete="off"></div><div id="sasl-password-field"><label for="conn-password">SASL password · session only</label><input id="conn-password" type="password" required autocomplete="off"></div></div><p class="muted">Future implementation also needs trusted CA/client certificate options and broker metadata checks.</p>',
+      http: '<div class="field"><label for="conn-base-url">Base URL</label><input id="conn-base-url" type="url" required value="https://api.example.test"><p class="muted">An HTTP profile groups requests; it does not keep a database-like connection open. Tokens are entered per session in Authorization.</p></div>'
+    };
+    function chooseType(next) {
+      dialogKind = next;
+      document.querySelectorAll('[data-kind]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.kind === next)));
+      $('profile-name').value = 'New ' + ({ postgres: 'PostgreSQL', mongo: 'MongoDB', kafka: 'Kafka', http: 'API' }[next]);
+      // Static field templates only; never insert profile names or credentials as HTML.
+      $('connection-fields').innerHTML = connectionForms[next];
+      $('connection-feedback').textContent = 'No test performed. Demo forms do not verify connectivity.';
+      if (next === 'kafka') $('conn-security').addEventListener('change', () => {
+        const sasl = $('conn-security').value === 'SASL_SSL';
+        ['sasl-method-field', 'sasl-user-field', 'sasl-password-field'].forEach(id => {
+          $(id).hidden = !sasl;
+          $(id).querySelectorAll('input, select').forEach(input => { input.disabled = !sasl; });
+        });
+        if (!sasl) { $('conn-user').value = ''; $('conn-password').value = ''; }
+      });
+    }
+    function validateConnection() {
+      $('profile-name').setCustomValidity($('profile-name').value.trim() ? '' : 'Enter a profile name.');
+      if (dialogKind === 'mongo') $('conn-uri').setCustomValidity(/^mongodb(?:\+srv)?:\/\//.test($('conn-uri').value) ? '' : 'Use mongodb:// or mongodb+srv://.');
+      if (dialogKind === 'http') {
+        let valid = false;
+        try { const url = new URL($('conn-base-url').value); valid = ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password; } catch {}
+        $('conn-base-url').setCustomValidity(valid ? '' : 'Enter an HTTP(S) base URL without embedded credentials.');
+      }
+      return $('connection-form').reportValidity();
+    }
+    function closeConnection() { $('connection-dialog').close(); }
+    $('add-connection').addEventListener('click', event => {
+      dialogOpener = event.currentTarget; chooseType('postgres');
+      $('connection-dialog').showModal(); $('profile-name').focus();
+    });
+    document.querySelectorAll('[data-kind]').forEach(button => button.addEventListener('click', () => chooseType(button.dataset.kind)));
+    $('close-dialog').addEventListener('click', closeConnection);
+    $('cancel-dialog').addEventListener('click', closeConnection);
+    $('connection-dialog').addEventListener('close', () => {
+      $('connection-form').reset(); $('connection-fields').replaceChildren();
+      if (dialogOpener) dialogOpener.focus();
+    });
+    $('connection-form').addEventListener('input', event => {
+      if (event.target.setCustomValidity) event.target.setCustomValidity('');
+      $('connection-feedback').textContent = 'Settings changed. No connectivity test performed.';
+    });
+    $('test-connection').addEventListener('click', () => {
+      if (validateConnection()) $('connection-feedback').textContent = 'Form is valid. Demo only: no server, credentials, TLS, or endpoint was tested.';
+    });
+    $('connection-form').addEventListener('submit', event => {
+      event.preventDefault(); if (!validateConnection()) return;
+      const root = structuredClone(hierarchy[{ postgres: 0, mongo: 1, kafka: 2, http: 3 }[dialogKind]]);
+      const name = $('profile-name').value.trim();
+      const database = $('conn-database')?.value.trim();
+      const baseURL = $('conn-base-url')?.value;
+      root.label = name; root.type = 'demo';
+      if (database) root.children[0].label = database;
+      const prefix = 'profile-' + (++profileSequence) + '-';
+      let firstLeaf;
+      function cloneNodes(node) {
+        const previous = node.id; node.id = prefix + previous; node.expanded = true;
+        if (node.children) node.children.forEach(cloneNodes);
+        else {
+          const copied = { ...resources[previous] };
+          copied.target = name + (database ? ' / ' + database : '');
+          if (dialogKind === 'http') {
+            const url = new URL(baseURL);
+            url.pathname = url.pathname.replace(/\/$/, '') + (previous === 'http-health' ? '/health' : '/orders');
+            url.search = ''; url.hash = ''; copied.url = url.href;
+          }
+          if (dialogKind === 'mongo') copied.resource = database + '.' + (previous === 'mongo-customers' ? 'customers' : 'orders');
+          resources[node.id] = copied; firstLeaf ??= node.id;
+        }
+      }
+      cloneNodes(root); buildTree([root], $('tree'));
+      // Only non-secret labels and fixture identities were copied; credentials are discarded.
+      closeConnection(); select(firstLeaf);
+      $('status').textContent = 'Added demo profile: ' + name + '. Sample resources only; no live connection.';
+    });
+    function kafkaPosition() {
+      const offset = $('kafka-start').value === 'offset';
+      $('kafka-offset-field').hidden = !offset;
+      $('kafka-offset').disabled = !offset;
+    }
+    $('kafka-start').addEventListener('change', kafkaPosition);
+    $('kafka-start-button').addEventListener('click', () => {
+      if (kind !== 'kafka' || kafkaTimer !== null) return;
+      if (!$('kafka-limit').reportValidity() || !$('kafka-duration').reportValidity()) return;
+      const specific = $('kafka-start').value === 'offset';
+      if (specific && $('kafka-partition').value === 'all') {
+        $('kafka-state').textContent = 'Select one partition for a specific offset.'; $('kafka-partition').focus(); return;
+      }
+      if (specific && !$('kafka-offset').reportValidity()) return;
+      const topic = activeSample().resource;
+      const start = specific ? BigInt($('kafka-offset').value) : 24n;
+      const partition = $('kafka-partition').value;
+      const count = Math.min(2, Number($('kafka-limit').value));
+      $('kafka-messages').replaceChildren(); $('kafka-empty').hidden = true;
+      $('kafka-start-button').disabled = true; $('kafka-stop').disabled = false;
+      $('kafka-state').textContent = 'Consuming sample stream…';
+      kafkaTimer = setTimeout(() => {
+        kafkaTimer = null; $('kafka-start-button').disabled = false; $('kafka-stop').disabled = true;
+        for (let index = 0; index < count; index++) {
+          const message = { topic, partition: partition === 'all' ? index : Number(partition), offset: String(start + BigInt(index)), key: 'order-' + (1042 + index), timestamp: '2026-10-29T08:00:00Z', headers: { source: 'demo' }, value: { event: topic, id: 1042 + index } };
+          const row = document.createElement('tr');
+          [String(message.partition), message.offset, message.key, JSON.stringify(message.value)].forEach((value, column) => {
+            const cell = document.createElement('td');
+            if (column === 1) {
+              const button = document.createElement('button'); button.textContent = value;
+              button.setAttribute('aria-label', 'Inspect partition ' + message.partition + ' offset ' + value);
+              button.addEventListener('click', () => { $('kafka-detail').textContent = JSON.stringify(message, null, 2); });
+              cell.append(button);
+            } else cell.textContent = value;
+            row.append(cell);
+          });
+          $('kafka-messages').append(row);
+        }
+        $('kafka-state').textContent = 'Simulation complete · ' + count + ' sample messages · no offsets committed';
+      }, 900);
+    });
+    $('kafka-stop').addEventListener('click', () => {
+      clearTimeout(kafkaTimer); kafkaTimer = null;
+      $('kafka-start-button').disabled = false; $('kafka-stop').disabled = true;
+      $('kafka-state').textContent = 'Stopped by user · no offsets committed';
+      $('kafka-empty').hidden = $('kafka-messages').children.length > 0;
+      $('kafka-start-button').focus();
+    });
+    $('produce-button').addEventListener('click', () => {
+      $('produce-state').textContent = 'Simulated acknowledgement for ' + activeSample().resource + '. Nothing was published.';
+    });
+    function httpURL() {
+      const url = new URL($('http-url').value);
+      if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new Error('Use an HTTP(S) URL without embedded credentials.');
+      for (const line of $('http-params').value.split('\n').filter(line => line.trim())) {
+        const position = line.indexOf('=');
+        if (position < 1) throw new Error('Use name=value for each query parameter.');
+        url.searchParams.append(line.slice(0, position).trim(), line.slice(position + 1));
+      }
+      url.hash = ''; return url.href;
+    }
+    function updateHTTP() {
+      try { $('http-final-url').textContent = 'Target: ' + httpURL(); }
+      catch (error) { $('http-final-url').textContent = error.message; }
+      $('http-body').disabled = !['POST', 'PUT', 'PATCH'].includes($('http-method').value);
+    }
+    ['http-url', 'http-params', 'http-method'].forEach(id => $(id).addEventListener('input', updateHTTP));
+    $('http-auth').addEventListener('change', () => {
+      $('http-token-field').hidden = $('http-auth').value !== 'bearer';
+      if ($('http-token-field').hidden) $('http-token').value = '';
+    });
+    document.querySelectorAll('[data-request-tab]').forEach(button => button.addEventListener('click', () => {
+      document.querySelectorAll('[data-request-tab]').forEach(candidate => {
+        const selected = candidate === button;
+        candidate.setAttribute('aria-pressed', String(selected));
+        $('request-' + candidate.dataset.requestTab).hidden = !selected;
+      });
+    }));
+    document.querySelectorAll('[data-response-tab]').forEach(button => button.addEventListener('click', () => {
+      document.querySelectorAll('[data-response-tab]').forEach(candidate => candidate.setAttribute('aria-pressed', String(candidate === button)));
+      $('http-response').hidden = button.dataset.responseTab !== 'body';
+      $('http-response-headers').hidden = button.dataset.responseTab !== 'headers';
+    }));
+    $('http-send').addEventListener('click', () => {
+      if (kind !== 'http' || httpTimer !== null) return;
+      let target;
+      try {
+        target = httpURL();
+        if ($('http-auth').value === 'bearer' && !$('http-token').value.trim()) throw new Error('Enter a session token in Authorization.');
+        if (!$('http-body').disabled) JSON.parse($('http-body').value);
+      } catch (error) { $('http-state').textContent = 'Invalid request: ' + error.message; return; }
+      const method = $('http-method').value;
+      $('http-send').disabled = true; $('http-cancel').disabled = false;
+      $('http-state').textContent = 'Sending simulation…';
+      $('http-response').textContent = 'Waiting for simulated response…';
+      httpTimer = setTimeout(() => {
+        httpTimer = null; $('http-send').disabled = false; $('http-cancel').disabled = true;
+        $('http-state').textContent = '200 OK · simulated · no network request';
+        $('http-response').textContent = JSON.stringify({ demo: true, method, url: target, message: 'Fictional response. No credentials or body were transmitted.' }, null, 2);
+        $('http-response-headers').textContent = 'content-type: application/json\nx-demo: true';
+      }, 700);
+    });
+    $('http-cancel').addEventListener('click', () => {
+      clearTimeout(httpTimer); httpTimer = null;
+      $('http-send').disabled = false; $('http-cancel').disabled = true;
+      $('http-state').textContent = 'Canceled · no network request';
+      $('http-response').textContent = 'Simulation canceled before completion.'; $('http-send').focus();
+    });
     buildTree(hierarchy, $('tree'));
     $('tree').addEventListener('click', event => {
       const row = event.target.closest('.tree-row');
@@ -266,7 +593,12 @@
       $('run').focus();
     });
     document.addEventListener('keydown', event => {
-      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); run(); }
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !$('connection-dialog').open) {
+        event.preventDefault();
+        if (kind === 'kafka') $('kafka-start-button').click();
+        else if (kind === 'http') $('http-send').click();
+        else run();
+      }
     });
     $('pg-users').tabIndex = 0;
     select('pg-users');

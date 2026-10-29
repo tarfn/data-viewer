@@ -1,6 +1,8 @@
 # Feature inventory
 
-All entries below are planned; none is currently implemented. IDs let backend
+All production entries below are planned; none is currently implemented. The
+documentation prototype illustrates some interactions using fictional data.
+IDs let backend
 work, frontend work, tests, and PRs refer to the same behavior. Required means
 needed for release 0.0.1; stretch means cut it before moving the release date.
 
@@ -25,7 +27,12 @@ needed for release 0.0.1; stretch means cut it before moving the release date.
 | UX-02 | Theme switching and layout persistence | Stretch | Persist non-secret preferences if needed | Light/dark theme, saved splitter sizes | Restart restores preferences |
 | EXT-01 | Built-in adapter capabilities | Required, small | Capability descriptors for PostgreSQL and MongoDB | Show only supported actions | MongoDB does not show a SQL action |
 | EXT-02 | External installable plugins | Future | Versioned protocol, process lifecycle, trust model | Installation, permission and compatibility UX | No release 0.0.1 commitment |
-| NEXT-01 | Kafka and HTTP | Future | Separate stream/request capabilities | Topic/message and HTTP request workspaces | No release 0.0.1 commitment |
+| UI-CON-01 | Add connection dialog | Required production UX; prototyped | Type-specific config validation and session lifecycle | Visible Add action; PostgreSQL/MongoDB forms; separate Save/Test/Connect meaning | User can add a profile without confusing saved settings with verified connectivity |
+| KF-01 | Kafka setup and topic browser | Future; UI prototyped | Broker metadata, TLS/SASL, resource identity | Kafka form and cluster/Topics/topic tree | Expand topic under the right profile; error for inaccessible advertised brokers |
+| KF-02 | Bounded Kafka inspection | Future; UI prototyped | Partition assignment, seek, cancellation, byte/record/time limits | Start position, Consume/Stop, message list and details | Offset applies to one partition; inspection never commits consumer group offsets |
+| KF-03 | Kafka produce | Future; UI sketch | Encoding, target validation, broker acknowledgement | Separate key/payload compose action and delivery status | No automatic publish while browsing; ambiguous delivery status is explicit |
+| HTTP-01 | API profile and request builder | Future; UI prototyped | URL composition, auth, headers/body, TLS and redirect policy | Method, effective URL, Params/Headers/Auth/Body | API profiles never imply a persistent database-style connection |
+| HTTP-02 | Response inspection | Future; UI prototyped | Bounded body, cancellation, transport/status distinction | Body/Headers, status/timing/size, canceled/error states | HTTP 4xx/5xx is distinguishable from a transport error |
 
 The initial UI presents data browsing without inline editing. User SQL can still
 write if the database account permits it; do not label the application universally
