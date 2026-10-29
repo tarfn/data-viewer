@@ -19,12 +19,12 @@ Its contents are fictional and it performs no network requests or persistence.
 | Data Viewer                    Local PostgreSQL / appdb      Connected   |
 +---------------------+----------------------------------------------------+
 | Connections      [+]| users                                      Refresh |
-| > Local PostgreSQL  | [Data] [Structure] [SQL]                            |
-|   appdb             +----------------------------------------------------+
-|   > public          | SELECT id, name FROM public.users;                  |
-|     > users         |                                                     |
-|     > orders        | [Run] [Cancel]              Limit 100   Timeout 30s |
-| > Local MongoDB     +----------------------------------------------------+
+| ▾ Local PostgreSQL  | [Data] [Structure] [SQL]                            |
+|   ▾ appdb           +----------------------------------------------------+
+|     ▾ public        | SELECT id, name FROM public.users;                  |
+|         users       |                                                     |
+|         orders      | [Run] [Cancel]              Limit 100   Timeout 30s |
+| ▸ Local MongoDB     +----------------------------------------------------+
 |                     | id         | name                                   |
 |                     | 1          | Ada                                    |
 |                     | 2          | Lin                                    |
@@ -36,6 +36,46 @@ Its contents are fictional and it performs no network requests or persistence.
 Use one active workspace initially. Data/Structure/SQL are views of the selected
 resource, not the stretch feature of multiple independently open editor tabs.
 MongoDB replaces SQL with Find and Structure with Sampled fields.
+
+### Explorer hierarchy and expansion
+
+The sidebar is one nested resource tree, similar to DataGrip or Robo 3T. Children
+appear **immediately below their own parent**, before the next sibling connection.
+Never put the selected connection's schema/collection list below all connections.
+
+```text
+▾ Local PostgreSQL                 connection
+  ▾ appdb                          connected database
+    ▾ public                       schema
+        users                      table
+        orders                     table
+▾ Local MongoDB                    connection
+  ▾ shop                           database
+      customers                    collection
+      orders                       collection
+```
+
+PostgreSQL release 0.0.1 browses the connected database; selecting a different
+database requires its own connection/session. MongoDB can list databases allowed
+by the current credentials. Do not add a fake schema level for MongoDB.
+
+- Each branch has a disclosure chevron and visible indentation/guide lines.
+  Connection, database, and PostgreSQL schema branches expand independently.
+- Clicking a branch toggles its children; it does not run queries or change the
+  active result target. Clicking a table/collection selects that resource and
+  opens its workspace. Highlight the selected leaf, not an unrelated connection.
+- Keep expansion state per node while navigating between resources. Collapsing
+  a branch hides only its descendants and leaves the active workspace intact.
+- In the real app, load a branch's metadata on first expansion. Show loading,
+  empty, permission/error, and Retry states inside that branch. Cache children
+  until explicit refresh or disconnect; do not fetch again on every collapse.
+- Keep the tree scrollable on small screens; do not hide resource navigation.
+- Use stable IDs scoped by connection, database, schema, and resource kind/name.
+  A MongoDB `orders` collection and PostgreSQL `orders` table are distinct nodes.
+
+The prototype implements expansion, leaf selection, and keyboard navigation with
+fixed sample resources. Lazy loading and real connection management remain future
+application work.
 
 ## Screens and flows
 
@@ -119,15 +159,15 @@ Switching resource/connection discards late responses from the old selection.
 
 ## Visual and interaction guidelines
 
-- Default to a calm light workspace with a 260 px connection sidebar, resizable
+- Default to a calm light workspace with a 300 px connection sidebar, resizable
   result/editor split, 8 px spacing scale, and restrained borders. Theme switching
   and saved splitter sizes are stretch goals.
 - Use a system sans-serif UI font and a monospace query/data font. Aim for 14 px
   body text, 32–36 px result rows, and clear focus outlines.
 - Provide at least WCAG AA contrast (4.5:1 for ordinary text). Connection and
   error states need text/icons, not color alone.
-- Begin with a 1024×720 desktop layout. At narrower widths collapse the sidebar
-  and keep Run/Cancel reachable. Scroll wide result tables horizontally instead
+- Begin with a 1024×720 desktop layout. At narrower widths use a scrollable
+  explorer above the workspace and keep Run/Cancel reachable. Scroll wide result tables horizontally instead
   of shrinking text until unreadable.
 - Use labeled native controls. Tree items need keyboard expand/collapse and an
   accessible selection state. Loading/status updates should use polite live
@@ -143,7 +183,11 @@ Switching resource/connection discards late responses from the old selection.
 | Ctrl+Space in editor | Open completion menu |
 | Enter / Escape in completion menu | Accept / dismiss suggestion |
 | Tab / Shift+Tab | Navigate actionable controls with visible focus |
-| Arrow keys in explorer | Navigate/expand/collapse resource tree |
+| Up / Down in explorer | Focus previous/next visible node without selecting it |
+| Right in explorer | Expand branch, or focus its first child if already expanded |
+| Left in explorer | Collapse branch, or focus its parent |
+| Home / End in explorer | Focus first/last visible node |
+| Enter / Space in explorer | Toggle branch or select focused table/collection |
 
 Cancel must have a reachable button; do not overload Escape while an editor
 completion menu or dialog is open. Do not steal ordinary editor typing shortcuts.
@@ -159,6 +203,9 @@ completion menu or dialog is open. Do not steal ordinary editor typing shortcuts
 7. Switch selection during a pending request; its late result must not replace
    the current workspace. Disconnect and reconnect without a frozen UI.
 8. Restart and reconnect from saved non-secret settings.
+9. Expand both connections and verify every schema/collection remains under its
+   own database. Collapse/reopen either branch without moving the other branch
+   or changing the active workspace. Repeat with keyboard navigation.
 
 The wireframe demonstrates layout only and does not validate these production
 behaviors. Verify them in Wails once real bindings and database operations exist.

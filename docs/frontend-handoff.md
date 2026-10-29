@@ -36,6 +36,12 @@ Operation names are illustrative. Prefer explicit methods over untyped generic
 dispatch. Give resource paths separate database, schema, and table/collection
 fields rather than splitting a display label on dots.
 
+Explorer nodes are nested under their owning connection/database, as specified
+in the [UX hierarchy](ui-ux-guide.md). Fetch children on first branch expansion
+using the full parent path; cache and track loading/error/expanded state per
+node. Expanding/collapsing a branch is navigation, not a request to retarget the
+active execution workspace. Only selecting a resource changes that target.
+
 Completion candidates should include label, insertion text, kind, and detail.
 Frontend filters cached candidates per keystroke. Metadata responses include a
 revision so refreshes can replace old candidates deterministically.

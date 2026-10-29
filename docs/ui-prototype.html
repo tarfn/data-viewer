@@ -19,15 +19,22 @@
     h2 { font-size: 18px; margin: 0 0 4px; }
     .muted { color: #53657a; }
     .badge { color: #176344; background: #e3f4ec; border-radius: 20px; padding: 4px 10px; font-size: 12px; white-space: nowrap; }
-    .layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: calc(100vh - 145px); }
-    aside { background: #f7f9fc; border-right: 1px solid #d8e0ea; padding: 24px 16px; }
+    .layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: calc(100vh - 145px); }
+    aside { background: #f7f9fc; border-right: 1px solid #d8e0ea; padding: 24px 12px; min-width: 0; }
     .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #53657a; }
-    .connection { width: 100%; display: block; text-align: left; margin-top: 12px; padding: 12px; }
-    .connection[aria-pressed="true"] { border-color: #2563eb; background: #eaf1ff; }
-    .connection small { display: block; color: #53657a; margin-top: 3px; }
-    .tree { padding: 16px 8px; margin: 0; list-style: none; line-height: 2; }
-    .tree .indent { padding-left: 18px; }
-    .tree .selected { color: #1e4ea8; font-weight: 600; }
+    .tree, .tree ul { list-style: none; margin: 0; padding: 0; }
+    .tree { margin-top: 16px; }
+    .tree ul { margin-left: 16px; border-left: 1px solid #d8e0ea; padding-left: 4px; }
+    .tree > li + li { margin-top: 12px; }
+    .tree-row { display: flex; align-items: center; gap: 6px; min-height: 34px; padding: 4px 6px; border-radius: 5px; cursor: pointer; }
+    .tree-row:hover { background: #eaf0f6; }
+    .tree-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tree-kind { font-size: 10px; color: #53657a; margin-left: auto; }
+    .chevron { width: 12px; flex: 0 0 12px; color: #53657a; text-align: center; }
+    [role="treeitem"][aria-expanded="true"] > .tree-row > .chevron { transform: rotate(90deg); }
+    [role="treeitem"][aria-selected="true"] > .tree-row { color: #1e4ea8; background: #e3edff; font-weight: 600; }
+    [role="treeitem"]:focus-visible { outline: none; }
+    [role="treeitem"]:focus-visible > .tree-row { outline: 2px solid #2563eb; outline-offset: -2px; }
     main { padding: 24px; min-width: 0; }
     .heading { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 20px; }
     .switcher { display: flex; gap: 8px; margin-bottom: 16px; }
@@ -49,7 +56,7 @@
     .hint { padding: 12px 16px; margin: 0; background: #f0f5ff; color: #294e88; }
     footer { padding: 12px 24px; border-top: 1px solid #d8e0ea; background: white; color: #53657a; }
     [hidden] { display: none !important; }
-    @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } aside { border-right: 0; border-bottom: 1px solid #d8e0ea; padding: 12px 16px; } .tree { display: none; } .connection { display: inline-block; width: auto; margin-right: 8px; } main { padding: 16px; } header { flex-wrap: wrap; } }
+    @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } aside { border-right: 0; border-bottom: 1px solid #d8e0ea; padding: 12px 16px; max-height: 320px; overflow-y: auto; } main { padding: 16px; } header { flex-wrap: wrap; } }
   </style>
 </head>
 <body>
@@ -59,12 +66,10 @@
     <span class="badge">Demo mode · no live connection</span>
   </header>
   <div class="layout">
-    <aside aria-label="Demo connection selection">
+    <aside aria-label="Database explorer">
       <div class="eyebrow">Connections · sample profiles</div>
-      <button class="connection" id="postgres" aria-pressed="true">Local PostgreSQL<small>appdb · PostgreSQL</small></button>
-      <button class="connection" id="mongo" aria-pressed="false">Local MongoDB<small>shop · MongoDB</small></button>
-      <ul class="tree" aria-label="Illustrative resource hierarchy" id="tree"></ul>
-      <p class="muted">Choose a sample profile to explore its proposed workspace.</p>
+      <ul class="tree" role="tree" aria-label="Connections and database resources" id="tree"></ul>
+      <p class="muted">Expand a connection and its database, then select a table or collection. Arrow keys navigate the tree.</p>
     </aside>
     <main>
       <div class="heading"><div><h2 id="resource">public.users</h2><div class="muted" id="target">Local PostgreSQL / appdb</div></div><span class="eyebrow">Read and inspect</span></div>
@@ -94,30 +99,103 @@
   <script>
     const $ = id => document.getElementById(id);
     let kind = 'postgres';
+    let selectedResource = 'pg-users';
     let timer = null;
     const samples = {
       postgres: {
         resource: 'public.users', target: 'Local PostgreSQL / appdb', view: 'SQL workspace', structureView: 'Structure', title: 'SQL editor', label: 'Statement', query: 'SELECT id, name, email FROM public.users;',
-        tree: '<li>appdb</li><li class="indent">public</li><li class="indent selected">users</li><li class="indent">orders</li>',
         results: '<div class="scroll"><table><thead><tr><th>id · int8</th><th>name · text</th><th>email · text</th></tr></thead><tbody><tr><td>1</td><td>Ada</td><td>ada@example.test</td></tr><tr><td>2</td><td>Lin</td><td><em class="muted">NULL</em></td></tr></tbody></table></div>',
         structure: '<div class="scroll"><table><thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th></tr></thead><tbody><tr><td>id</td><td>int8</td><td>No</td><td>Primary</td></tr><tr><td>name</td><td>text</td><td>No</td><td>—</td></tr><tr><td>email</td><td>text</td><td>Yes</td><td>—</td></tr></tbody></table></div>'
       },
       mongo: {
         resource: 'shop.customers', target: 'Local MongoDB / shop', view: 'Find workspace', structureView: 'Sampled fields', title: 'Find documents', label: 'Filter (projection, ordered sort, and limit are specified in the UX guide)', query: '{ "active": true }',
-        tree: '<li>shop</li><li class="indent selected">customers</li><li class="indent">orders</li>',
         results: '<pre>{\n  "_id": { "$oid": "507f1f77bcf86cd799439011" },\n  "name": "Ada",\n  "active": true,\n  "createdAt": { "$date": { "$numberLong": "1793232000000" } }\n}</pre>',
         structure: '<p class="hint">Fields observed in 2 sample documents. Other fields may exist; this is not a declared schema.</p><div class="scroll"><table><thead><tr><th>Observed path</th><th>Observed types</th></tr></thead><tbody><tr><td>_id</td><td>ObjectID</td></tr><tr><td>name</td><td>string</td></tr><tr><td>active</td><td>boolean</td></tr><tr><td>createdAt</td><td>date</td></tr></tbody></table></div>'
       }
     };
+    const resources = {
+      'pg-users': { kind: 'postgres' },
+      'pg-orders': {
+        kind: 'postgres', resource: 'public.orders', query: 'SELECT id, user_id, total FROM public.orders;',
+        results: '<div class="scroll"><table><thead><tr><th>id · int8</th><th>user_id · int8</th><th>total · numeric</th></tr></thead><tbody><tr><td>101</td><td>1</td><td>49.90</td></tr><tr><td>102</td><td>2</td><td>25.00</td></tr></tbody></table></div>',
+        structure: '<div class="scroll"><table><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody><tr><td>id</td><td>int8</td><td>Primary</td></tr><tr><td>user_id</td><td>int8</td><td>Foreign → users.id</td></tr><tr><td>total</td><td>numeric</td><td>—</td></tr></tbody></table></div>'
+      },
+      'mongo-customers': { kind: 'mongo' },
+      'mongo-orders': {
+        kind: 'mongo', resource: 'shop.orders', query: '{ "status": "paid" }',
+        results: '<pre>{\n  "_id": { "$oid": "507f1f77bcf86cd799439012" },\n  "status": "paid",\n  "total": { "$numberDecimal": "49.90" }\n}</pre>',
+        structure: '<p class="hint">Fields observed in 1 sample document. Other fields may exist.</p><div class="scroll"><table><thead><tr><th>Observed path</th><th>Observed types</th></tr></thead><tbody><tr><td>_id</td><td>ObjectID</td></tr><tr><td>status</td><td>string</td></tr><tr><td>total</td><td>decimal128</td></tr></tbody></table></div>'
+      }
+    };
+    const hierarchy = [
+      { id: 'postgres', label: 'Local PostgreSQL', type: 'connection', children: [
+        { id: 'pg-appdb', label: 'appdb', type: 'database', children: [
+          { id: 'pg-public', label: 'public', type: 'schema', children: [
+            { id: 'pg-users', label: 'users', type: 'table' },
+            { id: 'pg-orders', label: 'orders', type: 'table' }
+          ] }
+        ] }
+      ] },
+      { id: 'mongo', label: 'Local MongoDB', type: 'connection', children: [
+        { id: 'mongo-shop', label: 'shop', type: 'database', children: [
+          { id: 'mongo-customers', label: 'customers', type: 'collection' },
+          { id: 'mongo-orders', label: 'orders', type: 'collection' }
+        ] }
+      ] }
+    ];
+    function activeSample() {
+      return { ...samples[kind], ...resources[selectedResource] };
+    }
+    function buildTree(nodes, parent) {
+      for (const node of nodes) {
+        const item = document.createElement('li');
+        item.id = node.id; item.tabIndex = -1;
+        item.setAttribute('role', 'treeitem');
+        item.setAttribute('aria-labelledby', node.id + '-label');
+        item.setAttribute('aria-selected', 'false');
+        const row = document.createElement('div'); row.className = 'tree-row';
+        const chevron = document.createElement('span'); chevron.className = 'chevron';
+        chevron.textContent = node.children ? '▸' : '·'; chevron.setAttribute('aria-hidden', 'true');
+        const label = document.createElement('span'); label.id = node.id + '-label';
+        label.className = 'tree-label'; label.textContent = node.label;
+        const type = document.createElement('span'); type.className = 'tree-kind';
+        type.textContent = node.type; type.setAttribute('aria-hidden', 'true');
+        row.append(chevron, label, type); item.append(row);
+        if (node.children) {
+          // Both branches stay in place; opening one never moves the other's children.
+          const group = document.createElement('ul'); group.id = node.id + '-children';
+          group.setAttribute('role', 'group');
+          const expanded = node.id !== 'mongo' && node.id !== 'mongo-shop';
+          item.setAttribute('aria-expanded', String(expanded));
+          item.setAttribute('aria-controls', group.id); group.hidden = !expanded;
+          buildTree(node.children, group); item.append(group);
+        }
+        parent.append(item);
+      }
+    }
+    function focusItem(item) {
+      $('tree').querySelectorAll('[role="treeitem"]').forEach(node => { node.tabIndex = -1; });
+      item.tabIndex = 0; item.focus();
+    }
+    function toggle(item, expanded = item.getAttribute('aria-expanded') !== 'true') {
+      if (!item.hasAttribute('aria-expanded')) return;
+      item.setAttribute('aria-expanded', String(expanded));
+      document.getElementById(item.getAttribute('aria-controls')).hidden = !expanded;
+    }
+    function activate(item) {
+      if (item.hasAttribute('aria-expanded')) toggle(item);
+      else select(item.id);
+    }
     function stop() {
       clearTimeout(timer); timer = null;
       $('run').disabled = false; $('cancel').disabled = true;
     }
-    function select(next) {
-      stop(); kind = next;
-      const sample = samples[kind];
-      $('postgres').setAttribute('aria-pressed', String(kind === 'postgres'));
-      $('mongo').setAttribute('aria-pressed', String(kind === 'mongo'));
+    function select(resourceId) {
+      stop(); selectedResource = resourceId; kind = resources[resourceId].kind;
+      const sample = activeSample();
+      $('tree').querySelectorAll('[role="treeitem"]').forEach(node => {
+        node.setAttribute('aria-selected', String(node.id === resourceId));
+      });
       $('resource').textContent = sample.resource;
       $('target').textContent = sample.target;
       $('query-view').textContent = sample.view;
@@ -127,7 +205,6 @@
       $('input-label').textContent = sample.label;
       $('query').value = sample.query;
       // These fragments are fixed fictional constants, never database/user content.
-      $('tree').innerHTML = sample.tree;
       $('results').innerHTML = sample.results;
       $('structure').innerHTML = sample.structure;
       $('result-status').textContent = 'Sample output';
@@ -145,13 +222,41 @@
       $('result-status').textContent = 'Previous sample · simulation running';
       $('status').textContent = 'Simulating a request. Cancel is available.';
       timer = setTimeout(() => {
-        stop(); $('results').innerHTML = samples[kind].results;
+        stop(); $('results').innerHTML = activeSample().results;
         $('result-status').textContent = kind === 'postgres' ? '2 sample rows' : '1 sample document';
         $('status').textContent = 'Simulation complete. No query was sent to a database.';
       }, 1200);
     }
-    $('postgres').addEventListener('click', () => select('postgres'));
-    $('mongo').addEventListener('click', () => select('mongo'));
+    buildTree(hierarchy, $('tree'));
+    $('tree').addEventListener('click', event => {
+      const row = event.target.closest('.tree-row');
+      if (!row) return;
+      const item = row.parentElement; focusItem(item); activate(item);
+    });
+    $('tree').addEventListener('keydown', event => {
+      const item = event.target.closest('[role="treeitem"]');
+      if (!item) return;
+      const visible = [...$('tree').querySelectorAll('[role="treeitem"]')].filter(node => !node.closest('[hidden]'));
+      const index = visible.indexOf(item);
+      let destination;
+      switch (event.key) {
+        case 'ArrowDown': destination = visible[Math.min(index + 1, visible.length - 1)]; break;
+        case 'ArrowUp': destination = visible[Math.max(index - 1, 0)]; break;
+        case 'Home': destination = visible[0]; break;
+        case 'End': destination = visible[visible.length - 1]; break;
+        case 'ArrowRight':
+          if (item.getAttribute('aria-expanded') === 'false') toggle(item, true);
+          else if (item.hasAttribute('aria-expanded')) destination = item.querySelector('[role="treeitem"]');
+          break;
+        case 'ArrowLeft':
+          if (item.getAttribute('aria-expanded') === 'true') toggle(item, false);
+          else destination = item.parentElement.closest('[role="treeitem"]');
+          break;
+        case 'Enter': case ' ': activate(item); break;
+        default: return;
+      }
+      event.preventDefault(); if (destination) focusItem(destination);
+    });
     $('query-view').addEventListener('click', () => view(false));
     $('structure-view').addEventListener('click', () => view(true));
     $('run').addEventListener('click', run);
@@ -163,7 +268,8 @@
     document.addEventListener('keydown', event => {
       if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); run(); }
     });
-    select('postgres');
+    $('pg-users').tabIndex = 0;
+    select('pg-users');
   </script>
 </body>
 </html>
