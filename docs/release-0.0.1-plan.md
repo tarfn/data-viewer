@@ -7,13 +7,22 @@ helps users inspect their data, and provides a practical way to improve Go skill
 Target completion: **December 31, 2026**.
 
 This plan starts October 29, 2026 and assumes about 8–12 hours per week, with
-additional time potentially needed to learn the frontend. It is a target, not a
-delivery guarantee. Complete one working vertical slice at a time.
+additional time potentially needed for frontend integration. The developer's
+primary learning goal is Go backend implementation; frontend work can be handled
+separately using the [UI/UX specification](ui-ux-guide.md) and
+[handoff contracts](frontend-handoff.md). It is a target, not a delivery guarantee.
+Complete one working vertical slice at a time. A working desktop release still
+requires frontend implementation and integration, even if that work is delegated
+in a separate task.
 
 Choose the developer's own operating system as the first packaging target.
 Cross-platform installers can follow once the first target works.
 
 ## Release scope
+
+The [feature inventory](features.md) assigns stable IDs, responsibilities, and
+acceptance checks. The [plugin design](plugin-design.md) keeps the two built-in
+integrations small; external installable plugins remain deferred.
 
 | Capability | PostgreSQL | MongoDB |
 | --- | --- | --- |

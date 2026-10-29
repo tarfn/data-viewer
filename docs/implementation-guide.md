@@ -4,6 +4,11 @@ Work in small steps: learn one concept, implement a usable behavior, verify it,
 then commit it. The [release plan](release-0.0.1-plan.md) defines scope and dates;
 the [architecture](architecture.md) explains component boundaries.
 
+Your primary focus can stay on Go. Implement and test each backend capability
+against the [handoff contract](frontend-handoff.md). Frontend work can be completed
+separately using the [UI/UX guide](ui-ux-guide.md) and interactive wireframe.
+Review backend completion and full desktop completion as separate milestones.
+
 ## 1. Connect from a Go program
 
 Create a Go module and a temporary CLI entry point before adding a desktop UI.

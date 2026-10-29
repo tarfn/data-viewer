@@ -65,7 +65,13 @@ data-viewer/
 ```
 
 Add packages when needed. A dependency injection framework, generic repository
-layer, or plugin system is unnecessary for the first release.
+layer, or runtime plugin system is unnecessary for the first release. The
+[plugin design](plugin-design.md) describes small built-in capability descriptors
+and a deferred direction for external integrations.
+
+Use the [frontend handoff](frontend-handoff.md) to build Go functionality
+independently of the [UI/UX](ui-ux-guide.md). The developer's primary work is the
+Go backend; a separate frontend implementation can start from mock contracts.
 
 ## Application contracts
 

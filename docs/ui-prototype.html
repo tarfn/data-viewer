@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Data Viewer — interactive design wireframe</title>
+  <style>
+    :root { color-scheme: light; font: 14px/1.5 system-ui, sans-serif; color: #213047; background: #eef2f6; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; border: 1px solid #c6d0dd; border-radius: 6px; padding: 7px 12px; background: white; color: #213047; }
+    button:hover { background: #eaf0f6; }
+    button:disabled { opacity: .55; cursor: default; }
+    :focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+    .notice { padding: 10px 24px; background: #fff1c2; color: #634511; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 24px; background: white; border-bottom: 1px solid #d8e0ea; }
+    h1 { margin: 0; font-size: 20px; letter-spacing: -.5px; }
+    h2 { font-size: 18px; margin: 0 0 4px; }
+    .muted { color: #53657a; }
+    .badge { color: #176344; background: #e3f4ec; border-radius: 20px; padding: 4px 10px; font-size: 12px; white-space: nowrap; }
+    .layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: calc(100vh - 145px); }
+    aside { background: #f7f9fc; border-right: 1px solid #d8e0ea; padding: 24px 16px; }
+    .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #53657a; }
+    .connection { width: 100%; display: block; text-align: left; margin-top: 12px; padding: 12px; }
+    .connection[aria-pressed="true"] { border-color: #2563eb; background: #eaf1ff; }
+    .connection small { display: block; color: #53657a; margin-top: 3px; }
+    .tree { padding: 16px 8px; margin: 0; list-style: none; line-height: 2; }
+    .tree .indent { padding-left: 18px; }
+    .tree .selected { color: #1e4ea8; font-weight: 600; }
+    main { padding: 24px; min-width: 0; }
+    .heading { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 20px; }
+    .switcher { display: flex; gap: 8px; margin-bottom: 16px; }
+    .switcher [aria-pressed="true"] { background: #213047; color: white; }
+    .card { background: white; border: 1px solid #d8e0ea; border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+    .card-head { padding: 12px 16px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .editor { padding: 16px; }
+    label { display: block; font-weight: 600; margin-bottom: 8px; }
+    textarea { width: 100%; min-height: 130px; resize: vertical; border: 1px solid #c6d0dd; border-radius: 6px; padding: 14px; font: 14px/1.8 ui-monospace, monospace; background: #fbfcfe; color: #163b72; }
+    .toolbar { padding: 12px 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; border-top: 1px solid #e2e8f0; }
+    .primary { background: #2457c5; color: white; border-color: #2457c5; }
+    .primary:hover { background: #1946a6; }
+    .toolbar .muted { margin-left: auto; font-size: 12px; }
+    .scroll { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; text-align: left; }
+    th, td { padding: 11px 16px; border-bottom: 1px solid #edf0f5; white-space: nowrap; }
+    th { background: #f7f9fc; font-size: 12px; color: #53657a; }
+    pre { margin: 0; padding: 18px; overflow: auto; font: 13px/1.8 ui-monospace, monospace; }
+    .hint { padding: 12px 16px; margin: 0; background: #f0f5ff; color: #294e88; }
+    footer { padding: 12px 24px; border-top: 1px solid #d8e0ea; background: white; color: #53657a; }
+    [hidden] { display: none !important; }
+    @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } aside { border-right: 0; border-bottom: 1px solid #d8e0ea; padding: 12px 16px; } .tree { display: none; } .connection { display: inline-block; width: auto; margin-right: 8px; } main { padding: 16px; } header { flex-wrap: wrap; } }
+  </style>
+</head>
+<body>
+  <div class="notice"><strong>Design prototype:</strong> fictional data only. No database connections, query execution, autocomplete, or saved settings.</div>
+  <header>
+    <div><h1>Data Viewer <span class="muted">/ 0.0.1</span></h1><span class="muted">One workspace for your data</span></div>
+    <span class="badge">Demo mode · no live connection</span>
+  </header>
+  <div class="layout">
+    <aside aria-label="Demo connection selection">
+      <div class="eyebrow">Connections · sample profiles</div>
+      <button class="connection" id="postgres" aria-pressed="true">Local PostgreSQL<small>appdb · PostgreSQL</small></button>
+      <button class="connection" id="mongo" aria-pressed="false">Local MongoDB<small>shop · MongoDB</small></button>
+      <ul class="tree" aria-label="Illustrative resource hierarchy" id="tree"></ul>
+      <p class="muted">Choose a sample profile to explore its proposed workspace.</p>
+    </aside>
+    <main>
+      <div class="heading"><div><h2 id="resource">public.users</h2><div class="muted" id="target">Local PostgreSQL / appdb</div></div><span class="eyebrow">Read and inspect</span></div>
+      <div class="switcher" role="group" aria-label="Workspace view">
+        <button id="query-view" aria-pressed="true">SQL workspace</button>
+        <button id="structure-view" aria-pressed="false">Structure</button>
+      </div>
+      <section id="query-panel" aria-label="Query workspace">
+        <div class="card">
+          <div class="card-head"><strong id="editor-title">SQL editor</strong><span class="muted">Ctrl/Cmd+Enter to simulate Run</span></div>
+          <div class="editor"><label id="input-label" for="query">Statement</label><textarea id="query" spellcheck="false">SELECT id, name, email FROM public.users;</textarea></div>
+          <div class="toolbar"><button class="primary" id="run">Simulate Run</button><button id="cancel" disabled>Cancel</button><span class="muted">Preview: 100 · timeout: 30s (proposed defaults)</span></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><strong>Results</strong><span id="result-status" role="status" aria-live="polite">Sample output</span></div>
+          <div id="results"></div>
+          <p class="hint">Run simulates a request and shows fixed sample data; edited text is not evaluated.</p>
+        </div>
+      </section>
+      <section class="card" id="structure-panel" aria-label="Resource structure" hidden>
+        <div class="card-head"><strong id="structure-title">Columns</strong><span class="muted">Illustrative metadata</span></div>
+        <div id="structure"></div>
+      </section>
+    </main>
+  </div>
+  <footer id="status" role="status" aria-live="polite">Ready · select a sample profile, switch views, or simulate Run/Cancel.</footer>
+  <script>
+    const $ = id => document.getElementById(id);
+    let kind = 'postgres';
+    let timer = null;
+    const samples = {
+      postgres: {
+        resource: 'public.users', target: 'Local PostgreSQL / appdb', view: 'SQL workspace', structureView: 'Structure', title: 'SQL editor', label: 'Statement', query: 'SELECT id, name, email FROM public.users;',
+        tree: '<li>appdb</li><li class="indent">public</li><li class="indent selected">users</li><li class="indent">orders</li>',
+        results: '<div class="scroll"><table><thead><tr><th>id · int8</th><th>name · text</th><th>email · text</th></tr></thead><tbody><tr><td>1</td><td>Ada</td><td>ada@example.test</td></tr><tr><td>2</td><td>Lin</td><td><em class="muted">NULL</em></td></tr></tbody></table></div>',
+        structure: '<div class="scroll"><table><thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Key</th></tr></thead><tbody><tr><td>id</td><td>int8</td><td>No</td><td>Primary</td></tr><tr><td>name</td><td>text</td><td>No</td><td>—</td></tr><tr><td>email</td><td>text</td><td>Yes</td><td>—</td></tr></tbody></table></div>'
+      },
+      mongo: {
+        resource: 'shop.customers', target: 'Local MongoDB / shop', view: 'Find workspace', structureView: 'Sampled fields', title: 'Find documents', label: 'Filter (projection, ordered sort, and limit are specified in the UX guide)', query: '{ "active": true }',
+        tree: '<li>shop</li><li class="indent selected">customers</li><li class="indent">orders</li>',
+        results: '<pre>{\n  "_id": { "$oid": "507f1f77bcf86cd799439011" },\n  "name": "Ada",\n  "active": true,\n  "createdAt": { "$date": { "$numberLong": "1793232000000" } }\n}</pre>',
+        structure: '<p class="hint">Fields observed in 2 sample documents. Other fields may exist; this is not a declared schema.</p><div class="scroll"><table><thead><tr><th>Observed path</th><th>Observed types</th></tr></thead><tbody><tr><td>_id</td><td>ObjectID</td></tr><tr><td>name</td><td>string</td></tr><tr><td>active</td><td>boolean</td></tr><tr><td>createdAt</td><td>date</td></tr></tbody></table></div>'
+      }
+    };
+    function stop() {
+      clearTimeout(timer); timer = null;
+      $('run').disabled = false; $('cancel').disabled = true;
+    }
+    function select(next) {
+      stop(); kind = next;
+      const sample = samples[kind];
+      $('postgres').setAttribute('aria-pressed', String(kind === 'postgres'));
+      $('mongo').setAttribute('aria-pressed', String(kind === 'mongo'));
+      $('resource').textContent = sample.resource;
+      $('target').textContent = sample.target;
+      $('query-view').textContent = sample.view;
+      $('structure-view').textContent = sample.structureView;
+      $('structure-title').textContent = kind === 'postgres' ? 'Columns' : 'Sampled fields';
+      $('editor-title').textContent = sample.title;
+      $('input-label').textContent = sample.label;
+      $('query').value = sample.query;
+      // These fragments are fixed fictional constants, never database/user content.
+      $('tree').innerHTML = sample.tree;
+      $('results').innerHTML = sample.results;
+      $('structure').innerHTML = sample.structure;
+      $('result-status').textContent = 'Sample output';
+      $('status').textContent = 'Demo profile selected: ' + sample.target + '. No live connection.';
+    }
+    function view(structure) {
+      $('query-panel').hidden = structure;
+      $('structure-panel').hidden = !structure;
+      $('query-view').setAttribute('aria-pressed', String(!structure));
+      $('structure-view').setAttribute('aria-pressed', String(structure));
+    }
+    function run() {
+      if (timer !== null || $('query-panel').hidden) return;
+      $('run').disabled = true; $('cancel').disabled = false;
+      $('result-status').textContent = 'Previous sample · simulation running';
+      $('status').textContent = 'Simulating a request. Cancel is available.';
+      timer = setTimeout(() => {
+        stop(); $('results').innerHTML = samples[kind].results;
+        $('result-status').textContent = kind === 'postgres' ? '2 sample rows' : '1 sample document';
+        $('status').textContent = 'Simulation complete. No query was sent to a database.';
+      }, 1200);
+    }
+    $('postgres').addEventListener('click', () => select('postgres'));
+    $('mongo').addEventListener('click', () => select('mongo'));
+    $('query-view').addEventListener('click', () => view(false));
+    $('structure-view').addEventListener('click', () => view(true));
+    $('run').addEventListener('click', run);
+    $('cancel').addEventListener('click', () => {
+      stop(); $('result-status').textContent = 'Canceled · previous sample retained';
+      $('status').textContent = 'Simulation canceled. You can run again.';
+      $('run').focus();
+    });
+    document.addEventListener('keydown', event => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); run(); }
+    });
+    select('postgres');
+  </script>
+</body>
+</html>
