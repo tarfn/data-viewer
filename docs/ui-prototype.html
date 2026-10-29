@@ -75,15 +75,20 @@
     dialog { width: min(680px, calc(100% - 32px)); max-height: calc(100vh - 40px); border: 1px solid #c6d0dd; border-radius: 12px; padding: 24px; color: #213047; }
     dialog::backdrop { background: rgb(18 31 50 / .4); }
     .dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-    .type-picker { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 16px 0; }
-    .type-picker [aria-pressed="true"] { background: #e3edff; border-color: #2457c5; }
-    .type-picker button { padding: 12px 4px; }
-    .type-picker small { display: block; color: #53657a; font-size: 10px; }
+    .catalog-controls { display: grid; grid-template-columns: minmax(0, 1fr) 160px; gap: 12px; margin: 18px 0 12px; }
+    .integration-list { list-style: none; margin: 0; padding: 0; max-height: 300px; overflow-y: auto; border: 1px solid #d8e0ea; border-radius: 8px; }
+    .integration-list li + li { border-top: 1px solid #e2e8f0; }
+    .integration-option { width: 100%; display: block; border: 0; border-radius: 0; text-align: left; padding: 14px 16px; }
+    .integration-option strong { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .integration-option small { display: block; margin-top: 5px; color: #53657a; }
+    .integration-stage { font-size: 11px; font-weight: 400; color: #53657a; }
+    .integration-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; margin-bottom: 12px; border-bottom: 1px solid #d8e0ea; }
     .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
     .empty { padding: 24px; color: #53657a; }
     footer { padding: 12px 24px; border-top: 1px solid #d8e0ea; background: white; color: #53657a; }
     [hidden] { display: none !important; }
     @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } aside { border-right: 0; border-bottom: 1px solid #d8e0ea; padding: 12px 16px; max-height: 320px; overflow-y: auto; } main { padding: 16px; } header { flex-wrap: wrap; } }
+    @media (max-width: 520px) { .catalog-controls, .fields { grid-template-columns: 1fr; } .integration-option strong { flex-wrap: wrap; overflow-wrap: anywhere; } }
   </style>
 </head>
 <body>
@@ -99,7 +104,7 @@
       <p class="muted">Expand a profile, then select a table, collection, topic, or request. Arrow keys navigate the tree.</p>
     </aside>
     <main>
-      <div class="heading"><div><h2 id="resource">public.users</h2><div class="muted" id="target">Local PostgreSQL / appdb</div></div><span class="eyebrow">Read and inspect</span></div>
+      <div class="heading"><div><h2 id="resource">public.users</h2><div class="muted" id="target">Local PostgreSQL / appdb</div></div><span class="eyebrow" id="workspace-purpose">Query and inspect</span></div>
       <div class="switcher" id="database-views" role="group" aria-label="Workspace view">
         <button id="query-view" aria-pressed="true">SQL workspace</button>
         <button id="structure-view" aria-pressed="false">Structure</button>
@@ -122,6 +127,11 @@
       </section>
       <section id="kafka-panel" aria-label="Kafka workspace" hidden>
         <p class="hint">Kafka · future integration design. All broker metadata and messages below are fictional.</p>
+        <div class="switcher" role="group" aria-label="Kafka action">
+          <button id="kafka-consume-view" aria-pressed="true">Consume</button>
+          <button id="kafka-publish-view" aria-pressed="false">Publish</button>
+        </div>
+        <div id="kafka-consume-panel">
         <div class="card">
           <div class="card-head"><strong>Browse topic messages</strong><span class="muted">Inspection only · no group offset commits</span></div>
           <div class="fields">
@@ -139,12 +149,23 @@
           <div id="kafka-empty" class="empty">No messages sampled. Start a bounded inspection to see sample records.</div>
           <details open><summary>Selected message</summary><pre id="kafka-detail">Select a message to inspect its timestamp, headers, and value.</pre></details>
         </div>
-        <div class="card"><details><summary>Produce a message · future design</summary>
-          <p class="muted">A separate action from consuming. Demo only; nothing is published.</p>
-          <div class="field"><label for="produce-key">Key (optional)</label><input id="produce-key" value="order-1042"></div>
-          <div class="field"><label for="produce-value">Value</label><textarea id="produce-value">{ "event": "order.created", "id": 1042 }</textarea></div>
-          <button id="produce-button">Simulate produce</button><p id="produce-state" role="status"></p>
-        </details></div>
+        </div>
+        <section class="card" id="kafka-publish-panel" aria-label="Publish Kafka message" hidden>
+          <div class="card-head"><strong>Publish a message</strong><span class="muted">Producer · one record per action</span></div>
+          <p class="hint" id="publish-target">Target topic: orders.created</p>
+          <form id="kafka-publish-form">
+            <div class="fields">
+              <div><label for="publish-partition">Partition</label><select id="publish-partition"><option value="auto">Automatic (producer routing)</option><option value="0">Partition 0</option><option value="1">Partition 1</option></select></div>
+              <div><label for="publish-format">Payload format</label><select id="publish-format"><option value="json">JSON</option><option value="text">Text</option></select></div>
+              <div class="wide"><label for="produce-key">Key (optional)</label><input id="produce-key" value="order-1042"></div>
+              <div class="wide"><label for="publish-headers">Headers (ordered JSON array; duplicate keys allowed)</label><textarea id="publish-headers" spellcheck="false">[{ "key": "source", "value": "data-viewer" }]</textarea></div>
+              <div class="wide"><label id="publish-value-label" for="produce-value">JSON payload</label><textarea id="produce-value" spellcheck="false">{ "event": "order.created", "id": 1042 }</textarea></div>
+            </div>
+            <div class="toolbar"><button class="primary" id="produce-button" type="submit">Simulate Publish</button><button id="publish-cancel" type="button" disabled>Cancel simulation</button><span class="muted">Demo only · 1 MiB payload cap</span></div>
+          </form>
+          <div class="card-head"><strong>Publish result</strong><span id="produce-state" role="status" aria-live="polite">Not published</span></div>
+          <pre id="publish-receipt">Publish to see a simulated topic, partition, and offset acknowledgement.</pre>
+        </section>
       </section>
       <section id="http-panel" aria-label="HTTP workspace" hidden>
         <p class="hint">HTTP · future integration design. Send displays a simulated response; no network request is made.</p>
@@ -170,15 +191,26 @@
   <dialog id="connection-dialog" aria-labelledby="connection-title" aria-describedby="connection-description">
     <div class="dialog-head"><h2 id="connection-title">Add connection</h2><button id="close-dialog" aria-label="Close connection dialog">✕</button></div>
     <p id="connection-description" class="muted">Choose a tool and configure a profile. This prototype adds sample resources in memory only; credentials are not saved or transmitted.</p>
-    <div class="type-picker" role="group" aria-label="Connection type">
-      <button data-kind="postgres" aria-pressed="true">PostgreSQL<small>Release 0.0.1</small></button><button data-kind="mongo" aria-pressed="false">MongoDB<small>Release 0.0.1</small></button><button data-kind="kafka" aria-pressed="false">Kafka<small>Future design</small></button><button data-kind="http" aria-pressed="false">HTTP<small>Future design</small></button>
-    </div>
-    <form id="connection-form">
+    <section id="integration-picker" aria-label="Choose an integration">
+      <div class="catalog-controls">
+        <div><label for="integration-search">Find an integration</label><input id="integration-search" type="search" placeholder="Search name or capability…" autocomplete="off"></div>
+        <div><label for="integration-category">Category</label><select id="integration-category"><option value="all">All categories</option><option value="database">Databases</option><option value="messaging">Messaging</option><option value="api">APIs</option></select></div>
+      </div>
+      <p id="integration-count" class="muted" role="status" aria-live="polite"></p>
+      <ul id="integration-list" class="integration-list" aria-label="Available integration designs"></ul>
+      <p id="integration-empty" class="empty" hidden>No matching integrations. Try another name or category.</p>
+      <p id="integration-feedback" class="muted">Catalog comes from registered integration descriptors. These are built-in demo designs, not installed external plugins.</p>
+    </section>
+    <div id="integration-config" hidden>
+      <div class="integration-summary"><strong id="selected-integration">PostgreSQL</strong><button id="change-integration" type="button">← Back to integrations</button></div>
+      <p class="muted">Choosing a different integration starts a new form and clears credentials.</p>
+      <form id="connection-form">
       <div class="field"><label for="profile-name">Profile name</label><input id="profile-name" required maxlength="80" value="New PostgreSQL"></div>
       <div id="connection-fields"></div>
       <p id="connection-feedback" role="status" aria-live="polite">No test performed. Demo forms do not verify connectivity.</p>
       <div class="dialog-actions"><button type="button" id="test-connection">Validate form (demo)</button><button type="button" id="cancel-dialog">Cancel</button><button class="primary" type="submit">Add demo profile</button></div>
-    </form>
+      </form>
+    </div>
   </dialog>
   <footer id="status" role="status" aria-live="polite">Ready · select a sample profile, switch views, or simulate Run/Cancel.</footer>
   <script>
@@ -188,9 +220,17 @@
     let timer = null;
     let kafkaTimer = null;
     let httpTimer = null;
+    let publishTimer = null;
     let dialogKind = 'postgres';
     let profileSequence = 0;
     let dialogOpener = null;
+    let selectedIntegration = null;
+    const integrationCatalog = [
+      { id: 'postgres', kind: 'postgres', name: 'PostgreSQL', category: 'database', stage: 'Release 0.0.1', capabilities: ['sql', 'schema', 'tables'], description: 'Browse schemas and tables; execute SQL.', formKey: 'postgres', treeRoot: 'postgres' },
+      { id: 'mongo', kind: 'mongo', name: 'MongoDB', category: 'database', stage: 'Release 0.0.1', capabilities: ['documents', 'find', 'collections'], description: 'Browse collections; filter and inspect documents.', formKey: 'mongo', treeRoot: 'mongo' },
+      { id: 'kafka', kind: 'kafka', name: 'Kafka', category: 'messaging', stage: 'Future design', capabilities: ['consume', 'publish', 'produce', 'topics'], description: 'Consume topic messages and publish records.', formKey: 'kafka', treeRoot: 'kafka' },
+      { id: 'http', kind: 'http', name: 'HTTP', category: 'api', stage: 'Future design', capabilities: ['requests', 'rest', 'send', 'response'], description: 'Compose API requests and inspect responses.', formKey: 'http', treeRoot: 'http' }
+    ];
     const samples = {
       postgres: {
         resource: 'public.users', target: 'Local PostgreSQL / appdb', view: 'SQL workspace', structureView: 'Structure', title: 'SQL editor', label: 'Statement', query: 'SELECT id, name, email FROM public.users;',
@@ -299,6 +339,8 @@
       $('kafka-start-button').disabled = false; $('kafka-stop').disabled = true;
       clearTimeout(httpTimer); httpTimer = null;
       $('http-send').disabled = false; $('http-cancel').disabled = true;
+      clearTimeout(publishTimer); publishTimer = null;
+      $('produce-button').disabled = false; $('publish-cancel').disabled = true;
     }
     function select(resourceId) {
       stop(); selectedResource = resourceId; kind = resources[resourceId].kind;
@@ -310,6 +352,7 @@
       $('resource').textContent = sample.resource;
       $('target').textContent = sample.target;
       const database = kind === 'postgres' || kind === 'mongo';
+      $('workspace-purpose').textContent = database ? 'Query and inspect' : kind === 'http' ? 'Compose and send' : 'Kafka messages';
       $('database-views').hidden = !database;
       $('query-panel').hidden = !database;
       $('structure-panel').hidden = true;
@@ -317,10 +360,13 @@
       $('http-panel').hidden = kind !== 'http';
       $('http-token').value = '';
       if (kind === 'kafka') {
+        kafkaView(false);
         $('kafka-messages').replaceChildren(); $('kafka-empty').hidden = false;
         $('kafka-state').textContent = 'Idle · topic selected';
         $('kafka-detail').textContent = 'Select a message to inspect its timestamp, headers, and value.';
-        $('produce-state').textContent = '';
+        $('produce-state').textContent = 'Not published';
+        $('publish-target').textContent = 'Target: ' + sample.target + ' → ' + sample.resource;
+        $('publish-receipt').textContent = 'Publish to see a simulated topic, partition, and offset acknowledgement.';
       }
       if (kind === 'http') {
         $('http-method').value = sample.method; $('http-url').value = sample.url;
@@ -371,14 +417,56 @@
       kafka: '<div class="field"><label for="conn-brokers">Bootstrap servers (comma separated)</label><input id="conn-brokers" required value="localhost:9092"></div><div class="fields"><div><label for="conn-security">Security</label><select id="conn-security"><option value="SASL_SSL">SASL + TLS</option><option value="SSL">TLS</option><option value="PLAINTEXT">Plaintext (local development)</option></select></div><div id="sasl-method-field"><label for="conn-sasl">SASL mechanism</label><select id="conn-sasl"><option>SCRAM-SHA-256</option><option>SCRAM-SHA-512</option><option>PLAIN</option></select></div><div id="sasl-user-field"><label for="conn-user">SASL username</label><input id="conn-user" required autocomplete="off"></div><div id="sasl-password-field"><label for="conn-password">SASL password · session only</label><input id="conn-password" type="password" required autocomplete="off"></div></div><p class="muted">Future implementation also needs trusted CA/client certificate options and broker metadata checks.</p>',
       http: '<div class="field"><label for="conn-base-url">Base URL</label><input id="conn-base-url" type="url" required value="https://api.example.test"><p class="muted">An HTTP profile groups requests; it does not keep a database-like connection open. Tokens are entered per session in Authorization.</p></div>'
     };
-    function chooseType(next) {
-      dialogKind = next;
-      document.querySelectorAll('[data-kind]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.kind === next)));
-      $('profile-name').value = 'New ' + ({ postgres: 'PostgreSQL', mongo: 'MongoDB', kafka: 'Kafka', http: 'API' }[next]);
+    function renderIntegrationCatalog() {
+      const query = $('integration-search').value.trim().toLowerCase();
+      const category = $('integration-category').value;
+      const categories = [...new Set(integrationCatalog.map(entry => entry.category))].sort();
+      const categoryLabels = { database: 'Databases', messaging: 'Messaging', api: 'APIs' };
+      $('integration-category').replaceChildren(new Option('All categories', 'all'));
+      for (const name of categories) $('integration-category').add(new Option(categoryLabels[name] || name, name));
+      $('integration-category').value = categories.includes(category) ? category : 'all';
+      const filtered = integrationCatalog.filter(entry => {
+        const text = [entry.name, entry.category, entry.description, ...entry.capabilities].join(' ').toLowerCase();
+        return (!query || text.includes(query)) && (category === 'all' || entry.category === category);
+      });
+      $('integration-list').replaceChildren();
+      for (const entry of filtered) {
+        const item = document.createElement('li');
+        const button = document.createElement('button'); button.type = 'button';
+        button.className = 'integration-option'; button.dataset.kind = entry.id;
+        const heading = document.createElement('strong');
+        const name = document.createElement('span'); name.textContent = entry.name;
+        const stage = document.createElement('span'); stage.className = 'integration-stage'; stage.textContent = entry.stage;
+        heading.append(name, stage);
+        const detail = document.createElement('small'); detail.textContent = entry.description;
+        button.append(heading, detail); item.append(button); $('integration-list').append(item);
+        button.addEventListener('click', () => chooseType(entry.id));
+      }
+      $('integration-empty').hidden = filtered.length > 0;
+      $('integration-list').hidden = filtered.length === 0;
+      $('integration-count').textContent = filtered.length + ' of ' + integrationCatalog.length + ' integrations';
+    }
+    function showIntegrationPicker() {
+      $('integration-picker').hidden = false; $('integration-config').hidden = true;
+      $('connection-title').textContent = 'Add connection';
+      renderIntegrationCatalog(); $('integration-search').focus();
+    }
+    function chooseType(id) {
+      const entry = integrationCatalog.find(candidate => candidate.id === id);
+      if (!entry || !connectionForms[entry.formKey] || !hierarchy.some(node => node.id === entry.treeRoot)) {
+        $('integration-feedback').textContent = 'This integration has no compatible configuration renderer in the prototype.';
+        return;
+      }
+      selectedIntegration = entry; dialogKind = entry.kind;
+      $('integration-picker').hidden = true; $('integration-config').hidden = false;
+      $('selected-integration').textContent = entry.name + ' · ' + entry.stage;
+      $('connection-title').textContent = 'Configure ' + entry.name;
+      $('connection-form').reset(); $('profile-name').setCustomValidity('');
+      $('profile-name').value = 'New ' + entry.name;
       // Static field templates only; never insert profile names or credentials as HTML.
-      $('connection-fields').innerHTML = connectionForms[next];
+      $('connection-fields').innerHTML = connectionForms[entry.formKey];
       $('connection-feedback').textContent = 'No test performed. Demo forms do not verify connectivity.';
-      if (next === 'kafka') $('conn-security').addEventListener('change', () => {
+      if (dialogKind === 'kafka') $('conn-security').addEventListener('change', () => {
         const sasl = $('conn-security').value === 'SASL_SSL';
         ['sasl-method-field', 'sasl-user-field', 'sasl-password-field'].forEach(id => {
           $(id).hidden = !sasl;
@@ -386,6 +474,7 @@
         });
         if (!sasl) { $('conn-user').value = ''; $('conn-password').value = ''; }
       });
+      $('profile-name').focus();
     }
     function validateConnection() {
       $('profile-name').setCustomValidity($('profile-name').value.trim() ? '' : 'Enter a profile name.');
@@ -399,14 +488,45 @@
     }
     function closeConnection() { $('connection-dialog').close(); }
     $('add-connection').addEventListener('click', event => {
-      dialogOpener = event.currentTarget; chooseType('postgres');
-      $('connection-dialog').showModal(); $('profile-name').focus();
+      dialogOpener = event.currentTarget; selectedIntegration = null;
+      $('integration-search').value = ''; $('integration-category').value = 'all';
+      $('integration-feedback').textContent = 'Choose a registered integration. Future designs are labeled; no external plugins are installed.';
+      $('connection-dialog').showModal(); showIntegrationPicker();
     });
-    document.querySelectorAll('[data-kind]').forEach(button => button.addEventListener('click', () => chooseType(button.dataset.kind)));
+    $('integration-search').addEventListener('input', renderIntegrationCatalog);
+    $('integration-category').addEventListener('change', renderIntegrationCatalog);
+    $('change-integration').addEventListener('click', () => {
+      $('connection-form').reset(); $('connection-fields').replaceChildren();
+      selectedIntegration = null; showIntegrationPicker();
+    });
+    $('integration-search').addEventListener('keydown', event => {
+      if (event.key === 'ArrowDown') {
+        const first = $('integration-list').querySelector('button');
+        if (first) { event.preventDefault(); first.focus(); }
+      }
+    });
+    $('integration-list').addEventListener('keydown', event => {
+      const buttons = [...$('integration-list').querySelectorAll('button')];
+      const index = buttons.indexOf(event.target);
+      if (index < 0) return;
+      let next;
+      if (event.key === 'ArrowDown') next = buttons[Math.min(index + 1, buttons.length - 1)];
+      else if (event.key === 'ArrowUp') next = index === 0 ? $('integration-search') : buttons[index - 1];
+      else if (event.key === 'Home') next = buttons[0];
+      else if (event.key === 'End') next = buttons[buttons.length - 1];
+      if (next) { event.preventDefault(); next.focus(); }
+    });
     $('close-dialog').addEventListener('click', closeConnection);
     $('cancel-dialog').addEventListener('click', closeConnection);
+    $('connection-dialog').addEventListener('keydown', event => {
+      // Search inputs can otherwise consume Escape to clear text before closing.
+      if (event.key === 'Escape') {
+        event.preventDefault(); event.stopPropagation(); closeConnection();
+      }
+    }, true);
     $('connection-dialog').addEventListener('close', () => {
       $('connection-form').reset(); $('connection-fields').replaceChildren();
+      selectedIntegration = null;
       if (dialogOpener) dialogOpener.focus();
     });
     $('connection-form').addEventListener('input', event => {
@@ -417,8 +537,8 @@
       if (validateConnection()) $('connection-feedback').textContent = 'Form is valid. Demo only: no server, credentials, TLS, or endpoint was tested.';
     });
     $('connection-form').addEventListener('submit', event => {
-      event.preventDefault(); if (!validateConnection()) return;
-      const root = structuredClone(hierarchy[{ postgres: 0, mongo: 1, kafka: 2, http: 3 }[dialogKind]]);
+      event.preventDefault(); if (!selectedIntegration || !validateConnection()) return;
+      const root = structuredClone(hierarchy.find(node => node.id === selectedIntegration.treeRoot));
       const name = $('profile-name').value.trim();
       const database = $('conn-database')?.value.trim();
       const baseURL = $('conn-base-url')?.value;
@@ -494,8 +614,56 @@
       $('kafka-empty').hidden = $('kafka-messages').children.length > 0;
       $('kafka-start-button').focus();
     });
-    $('produce-button').addEventListener('click', () => {
-      $('produce-state').textContent = 'Simulated acknowledgement for ' + activeSample().resource + '. Nothing was published.';
+    function kafkaView(publish) {
+      $('kafka-consume-panel').hidden = publish;
+      $('kafka-publish-panel').hidden = !publish;
+      $('kafka-consume-view').setAttribute('aria-pressed', String(!publish));
+      $('kafka-publish-view').setAttribute('aria-pressed', String(publish));
+      if (kind === 'kafka') $('workspace-purpose').textContent = publish ? 'Compose and publish' : 'Inspect messages';
+    }
+    $('kafka-consume-view').addEventListener('click', () => kafkaView(false));
+    $('kafka-publish-view').addEventListener('click', () => kafkaView(true));
+    $('publish-format').addEventListener('change', () => {
+      $('publish-value-label').textContent = $('publish-format').value === 'json' ? 'JSON payload' : 'Text payload';
+    });
+    $('kafka-publish-form').addEventListener('submit', event => {
+      event.preventDefault();
+      if (kind !== 'kafka' || publishTimer !== null) return;
+      let headers;
+      try {
+        if ($('publish-format').value === 'json') JSON.parse($('produce-value').value);
+        if (new TextEncoder().encode($('produce-value').value).byteLength > 1024 * 1024) throw new Error('Payload exceeds the 1 MiB demo limit.');
+        headers = JSON.parse($('publish-headers').value || '[]');
+        if (!Array.isArray(headers) || headers.some(header => !header || typeof header.key !== 'string' || typeof header.value !== 'string')) {
+          throw new Error('Headers must be an array of {"key":"...","value":"..."} entries.');
+        }
+      } catch (error) {
+        $('produce-state').textContent = 'Invalid message: ' + error.message;
+        return;
+      }
+      const sample = activeSample();
+      const receipt = {
+        simulated: true, cluster: sample.target, topic: sample.resource,
+        partition: $('publish-partition').value === 'auto' ? 0 : Number($('publish-partition').value),
+        offset: '26', key: $('produce-key').value, headers,
+        payloadFormat: $('publish-format').value,
+        payloadBytes: new TextEncoder().encode($('produce-value').value).byteLength
+      };
+      $('produce-button').disabled = true; $('publish-cancel').disabled = false;
+      $('produce-state').textContent = 'Publishing simulation…';
+      $('publish-receipt').textContent = 'Waiting for simulated acknowledgement from ' + receipt.topic + '…';
+      publishTimer = setTimeout(() => {
+        publishTimer = null; $('produce-button').disabled = false; $('publish-cancel').disabled = true;
+        $('produce-state').textContent = 'Simulated acknowledgement · nothing was published';
+        $('publish-receipt').textContent = JSON.stringify(receipt, null, 2);
+      }, 800);
+    });
+    $('publish-cancel').addEventListener('click', () => {
+      clearTimeout(publishTimer); publishTimer = null;
+      $('produce-button').disabled = false; $('publish-cancel').disabled = true;
+      $('produce-state').textContent = 'Simulation canceled · nothing was published';
+      $('publish-receipt').textContent = 'No simulated acknowledgement. No broker request was sent.';
+      $('produce-button').focus();
     });
     function httpURL() {
       const url = new URL($('http-url').value);
@@ -595,7 +763,9 @@
     document.addEventListener('keydown', event => {
       if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !$('connection-dialog').open) {
         event.preventDefault();
-        if (kind === 'kafka') $('kafka-start-button').click();
+        if (kind === 'kafka' && !$('kafka-publish-panel').hidden) {
+          if (!$('produce-button').disabled) $('kafka-publish-form').requestSubmit();
+        } else if (kind === 'kafka') $('kafka-start-button').click();
         else if (kind === 'http') $('http-send').click();
         else run();
       }

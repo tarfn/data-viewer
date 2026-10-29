@@ -18,7 +18,7 @@ installation workflow has been implemented yet.
 - [UI/UX guide and wireframes](docs/ui-ux-guide.md)
 - [UI research, sources, and design decisions](docs/ui-research.md)
 - [Interactive UI prototype](docs/ui-prototype.html) — open locally in a browser;
-  PostgreSQL/MongoDB setup plus Kafka/HTTP future workspaces; fictional data
+  searchable integration setup, Kafka Consume/Publish, and HTTP future workspaces; fictional data
   only, no application backend
 - [Backend/frontend handoff](docs/frontend-handoff.md)
 - [Codex PR review guide](docs/pr-review-guide.md)

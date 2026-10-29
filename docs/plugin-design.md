@@ -23,6 +23,7 @@ references its kind; it does not embed executable paths or arbitrary code.
 | Structure metadata | Declared schema | Sampled observations | Integration-specific |
 | Completion candidates | SQL names/keywords | Operators/observed fields | Integration-specific |
 | Stream messages | No | No | Kafka |
+| Publish records | No | No | Kafka producer, separate from consumer |
 | Send HTTP request | No | No | HTTP |
 
 Do not build one `Execute(string) -> table` abstraction for all tools. A stream,
@@ -37,6 +38,7 @@ adapter. Use concrete implementations until an interface has an actual consumer.
 type Descriptor struct {
     Kind         string
     DisplayName  string
+    Category     string
     Capabilities []string
 }
 
@@ -64,6 +66,28 @@ The application validates requested capabilities on the backend as well as
 hiding unsupported actions in the frontend. An unknown kind or capability returns
 a typed unsupported-operation error.
 
+## Catalog and connection setup UI
+
+Add connection uses a searchable list of registered integration descriptors;
+avoid a fixed card grid or a separate global button for every plugin. Adding a
+descriptor should add a row without changing the picker layout. Each descriptor
+needs a stable ID/kind, display name, category, search keywords/capabilities,
+availability/compatibility state, and a configuration renderer/schema reference.
+The backend remains authoritative about which integrations are available.
+
+Categories are derived from descriptors. Search/filter within a bounded scroll
+area, show no-results feedback, then open the chosen integration's setup step.
+Use ordinary buttons with keyboard navigation; do not infer capability from a
+plugin's display name. A metadata entry without a compatible renderer must show
+an explanation rather than attempting to execute unknown configuration code.
+
+The prototype has a local descriptor catalog, trusted built-in form templates,
+and fixture tree references. It does not discover installed plugins or render
+arbitrary downloaded HTML. Future configuration schemas should describe allowed
+field types/validation and secret fields; a manifest is untrusted input, not
+permission to inject scripts into the webview. External plugin installation and
+trust remain separate, deferred workflows.
+
 ## Ownership and failure behavior
 
 - Connection manager owns session creation, lookup, disconnect, and shutdown.
@@ -90,7 +114,10 @@ built-ins. Database authorization remains the final authority on allowed actions
 5. Update the feature matrix, profile validation, and compatibility documentation.
 
 Kafka should receive a stream capability with explicit stop/backpressure behavior;
-HTTP should receive a request/response contract. Neither belongs in `SQLQuerier`.
+it also needs an independent publish-record capability. A user may have consume
+permission without produce permission, or the reverse; expose/validate each
+action separately. HTTP should receive a request/response contract. None belongs
+in `SQLQuerier`.
 
 Their future UI workspaces are now illustrated in the prototype. Kafka resource
 navigation is profile → Topics → topic; HTTP uses API profile → Requests → request.

@@ -91,7 +91,19 @@ Do not show a fake connected database or working results on first launch.
 ### 2. Add or edit a connection
 
 Keep **+ Add connection** visible in the sidebar header, even with existing
-profiles. Use a dialog with PostgreSQL/MongoDB selection, profile name, connection fields,
+profiles. Open a searchable integration catalog, not a fixed grid of tool cards.
+Show a bounded, scrollable list populated from registered descriptors. Each row
+contains name, short description, category, and availability/release status.
+Search matches name and capability keywords; category filters and a no-results
+state make a larger catalog usable. Categories come from the descriptors too.
+
+Selecting a row opens that integration's configuration step with a visible
+**Back to integrations** action. Back clears credentials; choosing another
+integration starts a fresh form. Escape closes the dialog and restores focus to
+Add connection. Search/arrow keys/Enter can select a result without a pointer.
+Do not automatically install or execute an external plugin by selecting its row.
+
+The configuration step includes profile name, connection fields,
 Test connection, Cancel, and Save and connect. Saving settings must not imply the
 connection succeeded. Show field errors next to their fields and connection
 errors in a dialog summary. Keep the dialog open after a failed attempt.
@@ -157,6 +169,8 @@ let users refine their query or explicitly increase the allowed preview limit.
 ```text
 Development Kafka → Topics → orders.created
 +------------------------------------------------------------------+
+| [Consume] [Publish]                                                |
+| Consume workspace:                                                |
 | Partition [All]  Start [Latest]   Max records [100]  Duration [30s] |
 | [Consume] [Stop]                        Inspection: no group commits|
 +------------------------------------------------------------------+
@@ -178,9 +192,37 @@ production application's consumer group. Do not imply offsets form a global
 topic-wide sequence or guarantee consecutive offsets after compaction/retention.
 
 The details pane shows partition/offset, timestamp, headers, decoded value, and
-raw fallback. Produce is an independent, deliberately invoked form. The current
-prototype contains simplified fixed sample messages and a fake acknowledgement;
-it does not implement streaming, broker verification, decoders, or delivery.
+raw fallback. **Consume and Publish are equally visible workspace actions**.
+Publishing must not be hidden inside a collapsed section of the consumer view.
+Neither switching modes nor selecting a topic sends data automatically.
+
+```text
+Development Kafka → Topics → orders.created
++------------------------------------------------------------------+
+| [Consume] [Publish]                                                |
+| Publish target: Development Kafka / orders.created                 |
+| Partition [Automatic]   Format [JSON]                              |
+| Key [order-1042]                                                   |
+| Headers [{"key":"source","value":"data-viewer"}]                   |
+| Payload {"event":"order.created","id":1042}                        |
+| [Publish] [Cancel]                                                 |
++------------------------------------------------------------------+
+| Acknowledgement: topic, partition, offset, delivery status          |
++------------------------------------------------------------------+
+```
+
+Publish includes optional key, automatic/explicit partition, ordered headers
+(duplicate keys supported), JSON/Text payload, validation, and a result panel.
+The prototype validates JSON/header shape and a 1 MiB payload cap, then simulates
+an acknowledgement. It supports Cancel simulation and captures the target before
+the operation; navigating to another topic cancels pending simulation output.
+All partition/offset values in acknowledgements are explicitly fictional.
+
+The real producer must distinguish acknowledged, failed, and uncertain delivery.
+Cancel or timeout after transmission cannot guarantee that a broker did not
+accept the record. Do not automatically retry an uncertain publish from the UI.
+Actual encodings, broker limits, acknowledgements, and idempotence depend on the
+chosen Go driver and configuration. The prototype does not publish to Kafka.
 
 ### 7. HTTP workspace (future)
 
@@ -282,9 +324,14 @@ completion menu or dialog is open. Do not steal ordinary editor typing shortcuts
     demo profile, and verify its children stay under it. Escape restores focus;
     reopening does not restore password/URI/token contents.
 11. In the future Kafka design, select a topic, inspect messages, stop a pending
-    sample stream, and try an offset without selecting a partition.
+    sample stream, and try an offset without selecting a partition. Switch to
+    Publish, validate JSON/headers, publish JSON and text examples, inspect the
+    simulated acknowledgement, and cancel an in-flight simulation.
 12. In the future HTTP design, compose a URL with params, change request settings,
     send/cancel a simulated request, and inspect response headers.
+13. Search integrations by name/capability, filter categories, recover from no
+    matches, and select with the keyboard. A large test catalog must scroll
+    inside the picker rather than expand it into an unbounded card grid.
 
 The wireframe demonstrates layout only and does not validate these production
 behaviors. Verify them in Wails once real bindings and database operations exist.

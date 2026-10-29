@@ -20,7 +20,7 @@ does not accept SQL/Find operations through one ambiguous string method.
 
 | Operation | Inputs | Result |
 | --- | --- | --- |
-| ListAdapters | None | Kinds, names, capability IDs |
+| ListAdapters | None | Stable IDs/kinds, names, categories, keywords/capability IDs, compatibility/availability, config renderer/schema references |
 | ListProfiles / SaveProfile / DeleteProfile | Non-secret profile fields or profile ID | Non-secret profiles |
 | TestConnection | Runtime connection config and credentials | Success or safe structured error; no retained session |
 | Connect | Runtime config and credentials | Connection ID, kind, display target, capabilities |
@@ -135,6 +135,11 @@ developer can finish and review backend work without pretending the UI is done.
 The prototype now explores these capabilities; neither is a 0.0.1 backend
 requirement. Keep them separate from ExecuteSQL and FindDocuments.
 
+The integration picker renders ListAdapters metadata as a searchable, filtered,
+scrollable list. Selection opens a separate configuration step; the frontend must
+not assume exactly four plugin types. The prototype supplies trusted built-in
+renderers and mock descriptors, not a runtime plugin installer.
+
 | Capability | Proposed inputs | Lifecycle / result requirements |
 | --- | --- | --- |
 | Kafka topic metadata | Connection ID, topic | Partitions, earliest/latest positions, permitted metadata; no group mutation |
@@ -149,6 +154,14 @@ backpressure, dropped-count policy, and a request-bound event channel, not an
 unbounded array returned only at the end. Do not auto-join existing consumer
 groups for inspection. Review the chosen Go client's actual partition/seek
 semantics rather than copying another language's API mechanically.
+
+Consume and publish are independent capabilities and peer workspace actions.
+Preserve ordered duplicate headers (an array, not a map) and binary-safe key/value
+encoding in the real transport. Capture the cluster/topic and content snapshot
+before sending; an acknowledgement carries the actual topic, partition, and
+string-encoded offset. Cancellation or missing acknowledgement after a send can
+mean uncertain delivery, not a guaranteed rollback. The prototype's cancel only
+cancels a local timer, and its partition/offset receipt is fictional.
 
 HTTP profile creation does not establish a connected session. Resolve URL/auth
 before sending, retain secret values only in the session, never echo credentials

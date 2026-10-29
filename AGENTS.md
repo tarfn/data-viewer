@@ -33,6 +33,11 @@ user's request. These are future UI designs, not shipped integrations or added
 [UI research](docs/ui-research.md); distinguish simulated interactions from real
 connectivity and actual integration tests.
 
+Kafka design includes both consuming and publishing as first-class capabilities.
+Connection setup uses a searchable, descriptor-driven integration catalog rather
+than a fixed tool-card grid, so future plugins can be added without redesigning
+the picker. External plugin loading remains deferred.
+
 Start with [README.md](README.md) and the linked design documents. Planned APIs,
 screens, and prototype behavior are not shipped features. Do not scaffold the
 application during documentation-only tasks. Update this status as implementation

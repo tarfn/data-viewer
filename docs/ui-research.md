@@ -1,7 +1,9 @@
 # UI research and design decisions
 
 Research date: October 29, 2026. Scope: connection setup, resource navigation,
-database query workspaces, Kafka inspection, HTTP requests, and accessibility.
+database query workspaces, Kafka consumption/publishing, HTTP requests, and
+accessibility. The current design also incorporates the user's requirement that
+integration discovery scale beyond a fixed set of plugins.
 
 ## Method and limits
 
@@ -34,6 +36,7 @@ the proposed behavior exactly.
 | S10 | [Bruno authentication](https://github.com/usebruno/bruno-docs/blob/1494fd0423634b0ffe31fcc5613309630e9b7e28/auth/overview.mdx) and [Bearer auth](https://github.com/usebruno/bruno-docs/blob/1494fd0423634b0ffe31fcc5613309630e9b7e28/auth/bearer.mdx) | Request-level and inherited authentication; dedicated authorization configuration rather than manually mixing secrets into request text |
 | S11 | [W3C APG tree view](https://github.com/w3c/aria-practices/blob/main/content/patterns/treeview/treeview-pattern.html) | Expand/collapse semantics, roving focus, arrow navigation, distinction between focus and selection |
 | S12 | [W3C APG modal dialog](https://github.com/w3c/aria-practices/blob/main/content/patterns/dialog-modal/dialog-modal-pattern.html) | Focus moves into modal; Tab stays within it; Escape dismisses; focus normally returns to opener |
+| S13 | [Apache Kafka producer documentation in source](https://github.com/apache/kafka/blob/trunk/clients/src/main/java/org/apache/kafka/clients/producer/KafkaProducer.java) | Sends can be asynchronous and buffered; delivery/retry/idempotence semantics differ from consumer position/commits |
 
 Kafka's Java source is evidence of protocol/client concepts, not a recommendation
 to use Java or assume a Go client's API has identical threading rules.
@@ -56,8 +59,16 @@ Add at the top of the sidebar, and S9 gives request creation an explicit entry.
 
 Keep **+ Add connection** beside the Connections heading, including when there
 are already profiles. The empty state repeats the same action. Opening it shows
-PostgreSQL, MongoDB, Kafka, and HTTP choices with release/future labels. Avoid
-four unrelated global Add buttons or a hidden context-menu-only setup path.
+a searchable, scrollable catalog populated from registered integration metadata,
+with category filters, descriptions, and release/availability labels. PostgreSQL,
+MongoDB, Kafka, and HTTP are initial entries, not fixed positions in a card grid.
+This list design responds to the user's plugin-growth requirement; S4/S9 establish
+creation discoverability, not a claim that those tools use this exact catalog.
+Avoid separate global Add buttons or a context-menu-only setup path.
+
+Selection opens configuration with Back navigation. Derive categories and search
+keywords from descriptors, handle no matches, and explain incompatible renderers.
+Do not conflate catalog selection with installing or trusting executable plugins.
 
 Production flow: choose type → name and configure → optionally Test → Save
 profile or Save and connect. Saving is not evidence of connectivity. HTTP uses
@@ -96,7 +107,11 @@ are distinct states. Expanding another cluster must never retarget a query that
 is already running. Use full resource identities, per-branch cache/loading/error
 state, and lazy metadata retrieval in the real app.
 
-## Decision 4: Kafka needs stream controls, not a query editor
+## Decision 4: Kafka needs both Consume and Publish workspaces
+
+Expose Consume and Publish as peer actions for a selected topic. Publishing is
+a primary Kafka workflow, not an advanced subsection of consumer inspection.
+Their distinct capabilities also allow consume-only or produce-only permissions.
 
 The inspection workspace should expose:
 
@@ -117,10 +132,16 @@ counts; it must not promise replay from a timestamp without a supported contract
 Group lag, reset offsets, topic deletion, and ACL editing are different tasks and
 are deferred. Topic partition metadata changes require refresh/error handling.
 
-Produce is a separate, deliberate action with target topic/partition, key,
-headers, payload, encoding, and acknowledgement. Canceling a produce request does
-not guarantee the broker did not receive it. The prototype only illustrates key,
-payload, and a fake acknowledgement; it does not implement these guarantees.
+Publish is a deliberate action with target topic/partition, optional key,
+ordered headers, JSON/Text payload, and acknowledgement [S13]. Canceling a produce
+request does not guarantee the broker did not receive it: sends may already have
+been buffered or transmitted. A future Go producer must specify acknowledgement,
+retry, and idempotence behavior instead of borrowing Java defaults blindly.
+
+The prototype now has a dedicated Publish view with partition choice, key,
+ordered duplicate-capable headers, payload format, JSON/header validation, a
+1 MiB demo payload cap, cancelable simulation, and a fictional receipt containing
+topic/partition/offset. It never sends to a broker and makes no delivery guarantee.
 
 ## Decision 5: HTTP needs request composition and response inspection
 
@@ -159,11 +180,16 @@ credentials in screenshots, logs, fixtures, or committed browser storage.
 
 ## Evaluation and remaining research
 
-Local Chromium checks cover the prototype's creation forms, tree navigation,
-workspace switching, stream Stop, request Cancel, field validation, and narrow
-layout. These checks verify prototype mechanics, not database connectivity,
+Local Chromium checks cover the prototype's creation forms, searchable catalog,
+tree navigation, workspace switching, stream Stop, publish validation/receipt/
+cancellation, request Cancel, field validation, and narrow layout. These checks
+verify prototype mechanics, not database connectivity,
 Kafka consumption, HTTP transport behavior, assistive-technology conformance, or
 user comprehension.
+
+The picker was also exercised with 84 in-memory descriptor entries, including a
+new category, to verify bounded scrolling, filtering, and registry-based setup.
+Those extra entries are test fixtures, not 84 implemented or installed plugins.
 
 Before frontend implementation is considered finished, run task-based sessions:
 
