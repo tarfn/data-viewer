@@ -41,8 +41,9 @@ single-expression handling, permissions, limits, and timeouts in Go. Collection
 filters remain parsed document objects passed to FindDocuments.
 
 Explorer row selection/expansion must not open tabs or mutate the active execution
-context. Each entity exposes an explicit actions menu. Open in Tab opens/reuses
-its workspace; database New → Query Console creates a unique console. Keep menu
+context. Data entities expose Open in Tab; databases expose New → Query Console
+directly, without a database overview tab. Connection roots, schemas, and grouping
+folders have no action menus. Keep menu
 context captured by entity ID, independent of whichever tab is active. Adding a
 profile only adds explorer nodes. Use extensible action descriptors with supported
 entity kinds/capabilities, disabled reasons, and handlers. Backend authorization
@@ -57,7 +58,9 @@ Each tab owns draft, result snapshot, request ID, running/canceled/error state,
 and close cleanup. Route completion to its originating tab, even while inactive.
 Cancel targets only that tab's operation; closing a running console prevents late
 output from recreating it. This prototype discards closed console drafts/results
-and retains at least one workspace. Define an unsaved-work policy before real
+and allows the last/all tabs to close into an empty workspace. Cancel outstanding
+operations and prevent late results from recreating closed tabs. Define an
+unsaved-work policy before real
 session persistence. Kafka/HTTP still cancel on navigation in this prototype.
 
 | Operation | Inputs | Result |

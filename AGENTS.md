@@ -33,9 +33,12 @@ design uses native command JSON, not mongosh JavaScript. All prototype execution
 remains simulated.
 
 The latest explorer interaction is explicit: clicking rows selects/expands only
-and never opens or switches tabs. Every entity has a right-side actions menu;
-Open in Tab opens/reuses its workspace and database New → Query Console creates
-a separate console. Menus use extensible action descriptors. Index inspection is
+and never opens or switches tabs. Connection roots, schemas, and grouping folders
+have no action menus or overview pages. Database menus create query consoles
+directly via New → Query Console; they do not open a database page. Data entity
+menus use Open in Tab. All tabs can close, including the last one, leaving an
+empty workspace; Close all tabs also cancels pending work. Menus use extensible
+action descriptors. Index inspection is
 a disabled planned action, not an implemented capability. New profiles do not
 automatically open tabs.
 

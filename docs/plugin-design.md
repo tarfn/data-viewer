@@ -75,6 +75,10 @@ an explicit menu action bound to the captured entity ID. Future index inspection
 can add a capability/action without redesigning the explorer. The current planned
 index item is disabled and makes no request.
 
+Only show menus where registered actions apply. Connection roots, schemas, and
+grouping folders currently have none. Databases offer console creation directly,
+not a generic Open in Tab or overview page. Data resources offer Open in Tab.
+
 ## Catalog and connection setup UI
 
 Add connection uses a searchable list of registered integration descriptors;

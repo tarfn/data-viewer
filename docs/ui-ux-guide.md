@@ -44,17 +44,20 @@ same menu. Every invocation opens a distinct console tab.
 
 Clicking a row or icon selects the explorer entity and toggles branch expansion;
 it never opens a tab, switches the active tab, retargets a draft, or cancels a
-running operation. The chevron only expands/collapses. Each row has an always
-visible right-side **⋯** actions button, including on touch layouts. Choose
-**Open in Tab** to open/reuse that entity's resource or overview workspace.
+running operation. The chevron only expands/collapses. Connection roots, schemas,
+and grouping folders have no action menus. Databases and data entities have an
+always-visible right-side **⋯** button, including on touch layouts. Tables,
+collections, topics, and requests offer **Open in Tab**. Database menus offer
+**New → Query Console** directly, with no intermediate database/overview page.
 Enter/Space selects/toggles a row; the action button opens its menu. Shift+F10 or
-right-click opens the same menu for any entity. Left/Right arrows still control
+right-click opens the same menu for entities with actions. Left/Right arrows still control
 tree expansion. Explorer selection and the active workspace are distinct states;
 the breadcrumb and active tab identify the execution target.
 
 Menus are built from extensible action descriptors with applicability checks.
-Available actions currently include Open in Tab, Expand/Collapse for branches,
-and New → Query Console for databases. Tables/collections show a disabled
+Available actions currently include Open in Tab for data entities and New →
+Query Console for databases. Parent expansion uses the tree, not menus.
+Tables/collections show a disabled
 **View indexes · planned** entry; it performs no request. Future index/properties/
 export actions can extend this registry without turning row clicks into actions.
 Do not infer backend permissions from menu visibility.
@@ -62,8 +65,12 @@ Do not infer backend permissions from menu visibility.
 Each console owns its ID, draft, results, request/cancel state, and immutable
 connection/database binding. Database simulations can finish in an inactive tab
 and update only that tab's result snapshot. Closing a console cancels its pending
-simulation and discards its window draft/results. At least one workspace remains
-open. Left/Right/Home/End navigate the tab strip. The prototype closes drafts
+simulation and discards its window draft/results. The last tab can close; the
+workspace then shows **No tabs open**, keeps the explorer usable, and offers Add
+connection. **Close all tabs** closes every tab and cancels pending work without
+opening a replacement. Normal resource drafts stay in window memory; closed
+console drafts/results are discarded. Left/Right/Home/End navigate the tab strip.
+The prototype closes drafts
 directly; a production editor needs an unsaved-work policy before adding file
 persistence or valuable user sessions.
 
@@ -461,6 +468,10 @@ completion menu or dialog is open. Do not steal ordinary editor typing shortcuts
     extra tabs should appear, and the active tab/draft/operation must stay intact.
     Open tabs through row menus, reuse an existing resource tab, and verify
     planned index actions are visibly disabled. Repeat using keyboard and touch.
+19. Verify parent/group rows have no menus and a database menu has no Open in Tab
+    or overview action. Close the last tab and use Close all tabs while operations
+    are running. The empty workspace must stay empty until an explicit action
+    opens a data tab/console; explorer search, menus, and Add connection still work.
 
 The wireframe demonstrates layout only and does not validate these production
 behaviors. Verify them in Wails once real bindings and database operations exist.

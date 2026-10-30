@@ -31,9 +31,12 @@ It includes resource search, per-resource window drafts, breadcrumbs, value
 inspection, a resizable explorer, and Kafka copy-to-publish drafts. All tool
 operations still use fictional data and make no network requests.
 Table/collection views use text filters. Row clicks select/expand only; use each
-entity's right-side ⋯ → Open in Tab. Database ⋯ → New → Query Console opens a
+data entity's right-side ⋯ → Open in Tab. Parent/group rows have no menus or
+overview pages. Database ⋯ → New → Query Console directly opens a
 separate database-bound editor tab (SQL or MongoDB command JSON). Entity action
 menus can grow later; index inspection is currently a disabled planned action.
+The last tab can close. Close all tabs leaves an empty workspace with the explorer
+and Add connection still available.
 
 The proposed stack is Go, Wails, React/TypeScript, CodeMirror 6, `pgx`, and the
 official MongoDB Go driver. Kafka and HTTP integrations are future extensions.
