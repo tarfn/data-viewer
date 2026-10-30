@@ -49,6 +49,17 @@ profile only adds explorer nodes. Use extensible action descriptors with support
 entity kinds/capabilities, disabled reasons, and handlers. Backend authorization
 still applies; disabled planned index actions do not call a backend operation.
 
+Connection roots instead expose a direct Edit connection pencil. Load settings
+by stable profile ID into the registered adapter's form; keep adapter ID fixed
+during edits. Cancel must not mutate the profile. SaveProfile updates non-secret
+configuration, not the active session or any tab's captured execution identity.
+Renaming changes display labels only. Reconnect/new-session behavior requires a
+separate explicit lifecycle action. In the prototype, edits are window-only and
+do not reconnect or rebuild sample resources. Passwords reopen blank; retained
+MongoDB URIs omit credentials and unsupported query options. The demo's URI
+allowlist is not a production credential-redaction/validation contract; implement
+that in Go with appropriate parsing and tests before persisting real profiles.
+
 PostgreSQL consoles call ExecuteSQL. MongoDB command-JSON consoles need a distinct
 ExecuteMongoCommand contract with an explicit supported/authorized command set;
 never evaluate JavaScript. The current prototype validates object-shaped JSON and

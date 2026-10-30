@@ -42,6 +42,12 @@ action descriptors. Index inspection is
 a disabled planned action, not an implemented capability. New profiles do not
 automatically open tabs.
 
+Connection roots have a direct pencil button for Edit connection, not an action
+menu. It opens the integration-specific form with window-only profile settings.
+Passwords are never retained; MongoDB URI credentials and unsupported query
+options are stripped before retaining its demo metadata. Saving edits does not
+reconnect or change existing resource/tab bindings; Cancel leaves settings intact.
+
 The documentation prototype also explores Kafka/HTTP forms and workspaces at the
 user's request. These are future UI designs, not shipped integrations or added
 0.0.1 backend requirements. Research evidence and limitations are recorded in

@@ -68,7 +68,9 @@
     .tree-row:hover { background: #eaf0f6; }
     .tree-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .tree-kind { font-size: 10px; color: #53657a; margin-left: auto; }
-    .entity-more { flex: 0 0 26px; width: 26px; height: 28px; padding: 0; border: 0; background: transparent; font-size: 20px; line-height: 1; color: #53657a; }
+    .entity-more, .connection-edit { flex: 0 0 26px; width: 26px; height: 28px; padding: 0; border: 0; background: transparent; font-size: 20px; line-height: 1; color: #53657a; }
+    .connection-edit { display: inline-flex; align-items: center; justify-content: center; }
+    .connection-edit:hover { background: #dce7f7; color: #1946a6; }
     .entity-more:hover, .entity-more[aria-expanded="true"] { background: #dce7f7; color: #1946a6; }
     .icon { display: inline-flex; width: 18px; height: 18px; flex: 0 0 18px; vertical-align: middle; color: #53657a; }
     .icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
@@ -137,7 +139,7 @@
   </style>
 </head>
 <body>
-  <div class="notice"><strong>Design prototype:</strong> fictional data only. No database connections, query execution, autocomplete, or saved settings.</div>
+  <div class="notice"><strong>Design prototype:</strong> fictional data only. No live connections, query execution, or autocomplete. Demo settings stay in this window only.</div>
   <header>
     <div><h1>Data Viewer <span class="muted">/ 0.0.1</span></h1><span class="muted">One workspace for your data</span></div>
     <span class="badge">Demo mode · no live connection</span>
@@ -150,6 +152,7 @@
       <ul class="tree" role="tree" aria-label="Connections and database resources" id="tree"></ul>
       <p id="explorer-empty" class="muted" hidden>No matching resources. Try a different name or clear the search.</p>
       <p class="muted">Click to select or expand. Use a data entity’s ⋯ → Open in Tab. Database ⋯ → New → Query Console opens a free-query editor.</p>
+      <p class="muted">To review or edit connection details, use the pencil beside the connection name.</p>
       <p class="draft-label">Drafts stay in this window. Reload clears them. Password/token inputs and HTTP headers reset on navigation.</p>
     </aside>
     <div id="sidebar-resize" class="splitter" role="separator" aria-label="Resize explorer" aria-orientation="vertical" aria-controls="explorer workspace" aria-valuemin="260" aria-valuemax="440" aria-valuenow="300" tabindex="0" title="Drag or use Left/Right arrows to resize; double-click to reset"></div>
@@ -261,12 +264,12 @@
     </section>
     <div id="integration-config" hidden>
       <div class="integration-summary"><strong id="selected-integration">PostgreSQL</strong><button id="change-integration" type="button">← Back to integrations</button></div>
-      <p class="muted">Choosing a different integration starts a new form and clears credentials.</p>
+      <p class="muted" id="connection-mode-help">Choosing a different integration starts a new form and clears credentials.</p>
       <form id="connection-form">
       <div class="field"><label for="profile-name">Profile name</label><input id="profile-name" required maxlength="80" value="New PostgreSQL"></div>
       <div id="connection-fields"></div>
       <p id="connection-feedback" role="status" aria-live="polite">No test performed. Demo forms do not verify connectivity.</p>
-      <div class="dialog-actions"><button type="button" id="test-connection">Validate form (demo)</button><button type="button" id="cancel-dialog">Cancel</button><button class="primary" type="submit">Add demo profile</button></div>
+      <div class="dialog-actions"><button type="button" id="test-connection">Validate form (demo)</button><button type="button" id="cancel-dialog">Cancel</button><button class="primary" id="save-connection" type="submit">Add demo profile</button></div>
       </form>
     </div>
   </dialog>
@@ -289,6 +292,7 @@
     let profileSequence = 0;
     let dialogOpener = null;
     let selectedIntegration = null;
+    let editingConnectionId = null;
     let workspaceLoaded = false;
     let searchExpansion = null;
     let selectionBeforeSearch = null;
@@ -319,7 +323,8 @@
       folder: '<path d="M3 6a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>',
       topic: '<circle cx="4" cy="6" r="2"/><circle cx="4" cy="12" r="2"/><circle cx="4" cy="18" r="2"/><path d="M9 6h12M9 12h12M9 18h12"/>',
       request: '<path d="M3 7h14m-4-4 4 4-4 4M21 17H7m4-4-4 4 4 4"/>',
-      plugin: '<path d="M8 2v5M16 2v5M5 7h14v4a7 7 0 0 1-14 0ZM12 18v4"/>'
+      plugin: '<path d="M8 2v5M16 2v5M5 7h14v4a7 7 0 0 1-14 0ZM12 18v4"/>',
+      edit: '<path d="m4 15 11-11a2.8 2.8 0 0 1 4 4L8 19l-5 2 1-6ZM13 6l4 4M4 15l4 4"/>'
     };
     function createIcon(key) {
       const safeKey = Object.hasOwn(iconPaths, key) ? key : 'plugin';
@@ -335,6 +340,18 @@
       { id: 'kafka', kind: 'kafka', name: 'Kafka', icon: 'kafka', category: 'messaging', stage: 'Future design', capabilities: ['consume', 'publish', 'produce', 'topics'], description: 'Consume topic messages and publish records.', formKey: 'kafka', treeRoot: 'kafka' },
       { id: 'http', kind: 'http', name: 'HTTP', icon: 'api', category: 'api', stage: 'Future design', capabilities: ['requests', 'rest', 'send', 'response'], description: 'Compose API requests and inspect responses.', formKey: 'http', treeRoot: 'http' }
     ];
+    const connectionProfiles = new Map([
+      ['postgres', { id: 'postgres', integrationId: 'postgres', name: 'Local PostgreSQL', fields: { 'conn-host': 'localhost', 'conn-port': '5432', 'conn-database': 'appdb', 'conn-user': 'viewer', 'conn-tls': 'verify-full' } }],
+      ['mongo', { id: 'mongo', integrationId: 'mongo', name: 'Local MongoDB', fields: { 'conn-uri': 'mongodb://localhost:27017', 'conn-database': 'shop' } }],
+      ['kafka', { id: 'kafka', integrationId: 'kafka', name: 'Development Kafka', fields: { 'conn-brokers': 'localhost:9092', 'conn-security': 'PLAINTEXT', 'conn-sasl': 'SCRAM-SHA-256', 'conn-user': '' } }],
+      ['http', { id: 'http', integrationId: 'http', name: 'Example API', fields: { 'conn-base-url': 'https://api.example.test' } }]
+    ]);
+    const profileFieldIds = {
+      postgres: ['conn-host', 'conn-port', 'conn-database', 'conn-user', 'conn-tls'],
+      mongo: ['conn-uri', 'conn-database'],
+      kafka: ['conn-brokers', 'conn-security', 'conn-sasl', 'conn-user'],
+      http: ['conn-base-url']
+    };
     const samples = {
       postgres: {
         resource: 'public.users', target: 'Local PostgreSQL / appdb', view: 'SQL workspace', structureView: 'Structure', title: 'SQL editor', label: 'Statement', query: 'SELECT id, name, email FROM public.users;',
@@ -571,7 +588,7 @@
       const preferred = visible.find(node => node.id === (resources[selectedResource]?.databaseNode || selectedResource)) || visible[0];
       nodes.forEach(node => {
         node.tabIndex = node === preferred ? 0 : -1;
-        const action = node.querySelector(':scope > .tree-row .entity-more');
+        const action = node.querySelector(':scope > .tree-row button');
         if (action) action.tabIndex = node.tabIndex;
       });
     }
@@ -664,6 +681,13 @@
         const type = document.createElement('span'); type.className = 'tree-kind';
         type.textContent = node.type; type.setAttribute('aria-hidden', 'true');
         row.append(chevron, createIcon(node.icon || node.type), label, type);
+        if (connectionProfiles.has(node.id)) {
+          const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'connection-edit'; edit.tabIndex = -1;
+          edit.append(createIcon('edit')); edit.title = 'Edit connection ' + node.label;
+          edit.setAttribute('aria-label', edit.title); edit.setAttribute('aria-haspopup', 'dialog'); edit.setAttribute('aria-controls', 'connection-dialog');
+          edit.addEventListener('click', event => { event.stopPropagation(); openConnectionEditor(node.id, edit); });
+          row.append(edit);
+        }
         if (hasEntityActions(node.id)) {
           const actions = document.createElement('button'); actions.type = 'button'; actions.className = 'entity-more'; actions.tabIndex = -1;
           actions.textContent = '⋯'; actions.title = 'Actions for ' + node.label;
@@ -692,11 +716,11 @@
     function focusItem(item) {
       $('tree').querySelectorAll('[role="treeitem"]').forEach(node => {
         node.tabIndex = -1;
-        const action = node.querySelector(':scope > .tree-row .entity-more');
+        const action = node.querySelector(':scope > .tree-row button');
         if (action) action.tabIndex = -1;
       });
       item.tabIndex = 0; item.focus();
-      const action = item.querySelector(':scope > .tree-row .entity-more');
+      const action = item.querySelector(':scope > .tree-row button');
       if (action) action.tabIndex = 0;
     }
     function markExplorerSelection(item) {
@@ -730,7 +754,7 @@
       $('tree').querySelectorAll('[role="treeitem"]').forEach(node => {
         node.setAttribute('aria-selected', String(node.id === (sample.databaseNode || resourceId)));
         node.tabIndex = node.id === (sample.databaseNode || resourceId) ? 0 : -1;
-        const action = node.querySelector(':scope > .tree-row .entity-more');
+        const action = node.querySelector(':scope > .tree-row button');
         if (action) action.tabIndex = node.tabIndex;
       });
       $('resource').textContent = sample.resource;
@@ -820,7 +844,7 @@
     }
     const connectionForms = {
       postgres: '<div class="fields"><div><label for="conn-host">Host</label><input id="conn-host" required value="localhost"></div><div><label for="conn-port">Port</label><input id="conn-port" type="number" min="1" max="65535" required value="5432"></div><div><label for="conn-database">Database</label><input id="conn-database" required value="appdb"></div><div><label for="conn-user">Username</label><input id="conn-user" required value="viewer" autocomplete="off"></div><div><label for="conn-password">Password · session only</label><input id="conn-password" type="password" autocomplete="off"></div><div><label for="conn-tls">TLS mode</label><select id="conn-tls"><option>verify-full</option><option>verify-ca</option><option>require</option><option>disable (local development)</option></select></div></div>',
-      mongo: '<div class="field"><label for="conn-uri">MongoDB URI · may contain credentials</label><input id="conn-uri" type="password" required value="mongodb://localhost:27017" autocomplete="off"><p class="muted">Accept mongodb:// or mongodb+srv://. The raw URI is discarded when this demo closes.</p></div><div class="field"><label for="conn-database">Initial database</label><input id="conn-database" required value="shop"></div>',
+      mongo: '<div class="field"><label for="conn-uri">MongoDB URI · may contain credentials</label><input id="conn-uri" type="password" required value="mongodb://localhost:27017" autocomplete="off"><button id="toggle-mongo-uri" type="button" aria-pressed="false">Show URI</button><p class="muted">Accept mongodb:// or mongodb+srv://. The saved copy removes credentials and unsupported query options; use only fictional demo credentials.</p></div><div class="field"><label for="conn-database">Initial database</label><input id="conn-database" required value="shop"></div>',
       kafka: '<div class="field"><label for="conn-brokers">Bootstrap servers (comma separated)</label><input id="conn-brokers" required value="localhost:9092"></div><div class="fields"><div><label for="conn-security">Security</label><select id="conn-security"><option value="SASL_SSL">SASL + TLS</option><option value="SSL">TLS</option><option value="PLAINTEXT">Plaintext (local development)</option></select></div><div id="sasl-method-field"><label for="conn-sasl">SASL mechanism</label><select id="conn-sasl"><option>SCRAM-SHA-256</option><option>SCRAM-SHA-512</option><option>PLAIN</option></select></div><div id="sasl-user-field"><label for="conn-user">SASL username</label><input id="conn-user" required autocomplete="off"></div><div id="sasl-password-field"><label for="conn-password">SASL password · session only</label><input id="conn-password" type="password" required autocomplete="off"></div></div><p class="muted">Future implementation also needs trusted CA/client certificate options and broker metadata checks.</p>',
       http: '<div class="field"><label for="conn-base-url">Base URL</label><input id="conn-base-url" type="url" required value="https://api.example.test"><p class="muted">An HTTP profile groups requests; it does not keep a database-like connection open. Tokens are entered per session in Authorization.</p></div>'
     };
@@ -866,6 +890,10 @@
         return;
       }
       selectedIntegration = entry; dialogKind = entry.kind;
+      $('change-integration').hidden = editingConnectionId !== null;
+      $('save-connection').textContent = editingConnectionId ? 'Save demo changes' : 'Add demo profile';
+      $('connection-description').textContent = 'Demo profile settings only. No connection, credential, or endpoint is verified; nothing is persisted to disk.';
+      $('connection-mode-help').textContent = editingConnectionId ? 'Review profile settings below. Passwords are not stored. Saving updates this window’s profile only; current sample resources and tab targets stay unchanged.' : 'Choosing a different integration starts a new form and clears credentials.';
       $('integration-picker').hidden = true; $('integration-config').hidden = false;
       $('selected-integration').replaceChildren(createIcon(entry.icon), document.createTextNode(entry.name + ' · ' + entry.stage));
       $('connection-title').textContent = 'Configure ' + entry.name;
@@ -874,6 +902,12 @@
       // Static field templates only; never insert profile names or credentials as HTML.
       $('connection-fields').innerHTML = connectionForms[entry.formKey];
       $('connection-feedback').textContent = 'No test performed. Demo forms do not verify connectivity.';
+      if (dialogKind === 'mongo') $('toggle-mongo-uri').addEventListener('click', event => {
+        const show = $('conn-uri').type === 'password';
+        $('conn-uri').type = show ? 'text' : 'password';
+        event.currentTarget.textContent = show ? 'Hide URI' : 'Show URI';
+        event.currentTarget.setAttribute('aria-pressed', String(show));
+      });
       if (dialogKind === 'kafka') $('conn-security').addEventListener('change', () => {
         const sasl = $('conn-security').value === 'SASL_SSL';
         ['sasl-method-field', 'sasl-user-field', 'sasl-password-field'].forEach(id => {
@@ -895,8 +929,65 @@
       return $('connection-form').reportValidity();
     }
     function closeConnection() { $('connection-dialog').close(); }
+    function sanitizeMongoURI(value) {
+      const match = value.match(/^(mongodb(?:\+srv)?:\/\/)([^/?#]+)(\/[^?#]*)?(?:\?([^#]*))?/);
+      if (!match) return '';
+      const authority = match[2].slice(match[2].lastIndexOf('@') + 1);
+      const allowed = new Set(['authsource', 'authmechanism', 'replicaset', 'tls', 'ssl', 'readpreference', 'directconnection', 'retrywrites']);
+      const query = new URLSearchParams();
+      for (const [key, val] of new URLSearchParams(match[4] || '')) if (allowed.has(key.toLowerCase())) query.append(key, val);
+      return match[1] + authority + (match[3] || '') + (query.size ? '?' + query.toString() : '');
+    }
+    function readProfileFields() {
+      const fields = Object.fromEntries(profileFieldIds[dialogKind].map(id => [id, $(id).value]));
+      if (dialogKind === 'mongo') fields['conn-uri'] = sanitizeMongoURI(fields['conn-uri']);
+      return fields;
+    }
+    function openConnectionEditor(id, opener) {
+      const profile = connectionProfiles.get(id);
+      if (!profile) return;
+      hideEntityMenu(); editingConnectionId = id; dialogOpener = opener;
+      $('connection-dialog').showModal(); chooseType(profile.integrationId);
+      $('connection-title').textContent = 'Edit ' + selectedIntegration.name + ' connection';
+      $('profile-name').value = profile.name;
+      for (const [field, value] of Object.entries(profile.fields)) if ($(field)) $(field).value = value;
+      if (dialogKind === 'kafka') $('conn-security').dispatchEvent(new Event('change'));
+      if ($('conn-password')) { $('conn-password').value = ''; $('conn-password').required = false; }
+      $('connection-feedback').textContent = 'Saved non-secret settings loaded. Passwords are blank; no connectivity test performed.';
+      if (dialogKind === 'mongo') $('connection-feedback').textContent += ' URI credentials and unrecognized query options were removed before storing.';
+      $('profile-name').focus();
+    }
+    function updateConnectionProfile(id, name, fields) {
+      const profile = connectionProfiles.get(id); const previousName = profile.name;
+      connectionProfiles.set(id, { ...profile, name, fields });
+      const root = $(id); const metadata = entityMetadata.get(id); metadata.label = name;
+      root.querySelector(':scope > .tree-row .tree-label').textContent = name;
+      const edit = root.querySelector(':scope > .tree-row .connection-edit');
+      edit.title = 'Edit connection ' + name; edit.setAttribute('aria-label', edit.title);
+      root.querySelector(':scope > .tree-row .tree-kind').textContent = 'updated';
+      root.querySelector(':scope > .tree-row .tree-kind').title = 'Saved settings changed; existing sample sessions are not reconnected.';
+      for (const [resourceId, resource] of Object.entries(resources)) {
+        const source = $(resource.console ? resource.databaseNode : resourceId);
+        const belongs = source && root.contains(source);
+        const target = resource.target || samples[resource.kind]?.target;
+        if (belongs && target && (target === previousName || target.startsWith(previousName + ' / '))) resource.target = name + target.slice(previousName.length);
+      }
+      filterExplorer();
+      if (workspaceLoaded) {
+        $('target').textContent = activeSample().target;
+        $('breadcrumbs').replaceChildren();
+        workspacePath().forEach((label, index, path) => {
+          const item = document.createElement('li'); item.textContent = label;
+          if (index === path.length - 1) item.setAttribute('aria-current', 'page');
+          $('breadcrumbs').append(item);
+        });
+        renderTabs();
+      }
+    }
     $('add-connection').addEventListener('click', event => {
-      dialogOpener = event.currentTarget; selectedIntegration = null;
+      dialogOpener = event.currentTarget; selectedIntegration = null; editingConnectionId = null;
+      $('change-integration').hidden = false;
+      $('connection-description').textContent = 'Choose a tool and configure a profile. This prototype adds sample resources in memory only; credentials are not saved or transmitted.';
       $('integration-search').value = ''; $('integration-category').value = 'all';
       $('integration-feedback').textContent = 'Choose a registered integration. Future designs are labeled; no external plugins are installed.';
       $('connection-dialog').showModal(); showIntegrationPicker();
@@ -934,8 +1025,9 @@
     }, true);
     $('connection-dialog').addEventListener('close', () => {
       $('connection-form').reset(); $('connection-fields').replaceChildren();
-      selectedIntegration = null;
-      if (dialogOpener) dialogOpener.focus();
+      selectedIntegration = null; editingConnectionId = null;
+      if (dialogOpener?.isConnected && !dialogOpener.closest('[hidden], .search-hidden')) dialogOpener.focus();
+      else $('add-connection').focus();
     });
     $('connection-form').addEventListener('input', event => {
       if (event.target.setCustomValidity) event.target.setCustomValidity('');
@@ -946,6 +1038,13 @@
     });
     $('connection-form').addEventListener('submit', event => {
       event.preventDefault(); if (!selectedIntegration || !validateConnection()) return;
+      const fields = readProfileFields();
+      if (editingConnectionId) {
+        const id = editingConnectionId; const name = $('profile-name').value.trim();
+        updateConnectionProfile(id, name, fields); closeConnection();
+        $('status').textContent = 'Updated demo profile ' + name + '. Settings updated in this window; existing resource/tab bindings are unchanged. No reconnect performed.';
+        return;
+      }
       const root = structuredClone(hierarchy.find(node => node.id === selectedIntegration.treeRoot));
       const name = $('profile-name').value.trim();
       const database = $('conn-database')?.value.trim();
@@ -969,8 +1068,10 @@
           resources[node.id] = copied; firstLeaf ??= node.id;
         }
       }
-      cloneNodes(root); buildTree([root], $('tree'));
-      // Only non-secret labels and fixture identities were copied; credentials are discarded.
+      cloneNodes(root);
+      connectionProfiles.set(root.id, { id: root.id, integrationId: selectedIntegration.id, name, fields });
+      buildTree([root], $('tree'));
+      // Retain only profile metadata and fixture identities; password/URI credentials are discarded.
       clearExplorer(); closeConnection(); focusItem($(firstLeaf)); markExplorerSelection($(firstLeaf));
       $('status').textContent = 'Added demo profile: ' + name + '. Use its entity menu to open a tab; no live connection.';
     });
@@ -1250,7 +1351,7 @@
     $('tree').addEventListener('keydown', event => {
       const item = event.target.closest('[role="treeitem"]');
       if (!item) return;
-      if (event.target.closest('.entity-more') && ['Enter', ' '].includes(event.key)) return;
+      if (event.target.closest('.entity-more, .connection-edit') && ['Enter', ' '].includes(event.key)) return;
       const visible = [...$('tree').querySelectorAll('[role="treeitem"]')].filter(node => !node.closest('[hidden], .search-hidden'));
       const index = visible.indexOf(item);
       let destination;

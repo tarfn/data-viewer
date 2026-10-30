@@ -37,6 +37,9 @@ separate database-bound editor tab (SQL or MongoDB command JSON). Entity action
 menus can grow later; index inspection is currently a disabled planned action.
 The last tab can close. Close all tabs leaves an empty workspace with the explorer
 and Add connection still available.
+Use the pencil beside a connection name to review or edit its saved settings
+(PostgreSQL, MongoDB, Kafka, or HTTP). Demo edits stay in this window; passwords
+are not retained, and saving does not reconnect or retarget existing tabs.
 
 The proposed stack is Go, Wails, React/TypeScript, CodeMirror 6, `pgx`, and the
 official MongoDB Go driver. Kafka and HTTP integrations are future extensions.

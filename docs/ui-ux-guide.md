@@ -184,6 +184,14 @@ Do not show a fake connected database or working results on first launch.
 
 ### 2. Add or edit a connection
 
+Each connection root has an always-visible **pencil — Edit connection** button
+beside its name, including PostgreSQL, MongoDB, Kafka, and HTTP. This is a direct
+action, not a parent context menu. Row clicks still only select/expand. The pencil
+opens that profile's integration-specific form with its current settings, without
+creating a tab or changing the active workspace. Editing cannot change the
+integration type; create another profile to use a different adapter. Cancel/Escape
+discards edits and restores focus to the pencil.
+
 Keep **+ Add connection** visible in the sidebar header, even with existing
 profiles. Open a searchable integration catalog, not a fixed grid of tool cards.
 Show a bounded, scrollable list populated from registered descriptors. Each row
@@ -208,6 +216,19 @@ profile** adds fictional resources in memory and discards all credential fields
 when the dialog closes. Reloading removes these profiles. In the actual app,
 Save profile, Test connection, and Save and connect need distinct outcomes.
 Adding a profile does not automatically open a workspace; use its entity menu.
+
+**Save demo changes** updates the profile name/settings in window memory and
+shows an updated marker. Reopening the pencil shows those settings; Cancel leaves
+them unchanged. Password fields always reopen blank. MongoDB has Show/Hide URI;
+its retained copy removes URI credentials, fragments, and query options outside
+the demo allowlist (`authSource`, `authMechanism`, `replicaSet`, `tls`, `ssl`,
+`readPreference`, `directConnection`, `retryWrites`). This is a limited form mock,
+not a full driver URI parser; use fictional credentials only. Reload resets all
+edits. A saved host/database/broker/base URL change is staged profile metadata:
+the fixture tree and current tab database/resource bindings remain unchanged,
+and no reconnect or request occurs. A display-name change updates labels only.
+Production must separate SaveProfile from an explicit reconnect/new-session
+workflow; existing tabs and in-flight operations keep their captured identities.
 
 PostgreSQL fields: host, port, database, username, password, TLS mode and supported
 certificate options. MongoDB: URI entry plus optional database override. Explain
@@ -472,6 +493,11 @@ completion menu or dialog is open. Do not steal ordinary editor typing shortcuts
     or overview action. Close the last tab and use Close all tabs while operations
     are running. The empty workspace must stay empty until an explicit action
     opens a data tab/console; explorer search, menus, and Add connection still work.
+20. Use each connection's pencil to inspect its settings, cancel an edit, save a
+    change, and reopen it. Check PostgreSQL host/port/database/TLS, MongoDB's
+    sanitized URI and Show/Hide, Kafka brokers/security/SASL, and HTTP base URL.
+    Passwords reopen blank. Renames update labels, while endpoint edits never
+    retarget a tab or cancel its query. Repeat with no tabs and with the keyboard.
 
 The wireframe demonstrates layout only and does not validate these production
 behaviors. Verify them in Wails once real bindings and database operations exist.
