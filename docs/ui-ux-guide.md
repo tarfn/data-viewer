@@ -21,12 +21,12 @@ limitations. Kafka/HTTP production integrations remain outside release 0.0.1.
 +--------------------------------------------------------------------------+
 | Data Viewer                    Local PostgreSQL / appdb      Connected   |
 +---------------------+----------------------------------------------------+
-| Connections      [+]| users                                      Refresh |
-| ▾ Local PostgreSQL  | [Data] [Structure] [SQL]                            |
+| Connections      [+]| [users] [Query Console 1 · appdb]                  |
+| ▾ Local PostgreSQL  | users                         [Data] [Structure]   |
 |   ▾ appdb           +----------------------------------------------------+
-|     ▾ public        | SELECT id, name FROM public.users;                  |
+|     ▾ public        | Filter [name LIKE 'A%'                         ]   |
 |         users       |                                                     |
-|         orders      | [Run] [Cancel]              Limit 100   Timeout 30s |
+|         orders      | [Apply filter] [Cancel]     Limit 100   Timeout 30s |
 | ▸ Local MongoDB     +----------------------------------------------------+
 |                     | id         | name                                   |
 |                     | 1          | Ada                                    |
@@ -36,9 +36,27 @@ limitations. Kafka/HTTP production integrations remain outside release 0.0.1.
 +---------------------+----------------------------------------------------+
 ```
 
-Use one active workspace initially. Data/Structure/SQL are views of the selected
-resource, not the stretch feature of multiple independently open editor tabs.
-MongoDB replaces SQL with Find and Structure with Sampled fields.
+Use a tab strip for resource views and independent database query consoles.
+Tables have Data/Structure views; collections have Data/Sampled fields views.
+Both use a single-line filter text field, not a free-form query editor. For custom
+queries, select the database and choose **New → Query Console**, or right-click
+the database for the same menu. Every invocation opens a distinct console tab.
+
+Click a database label to open its overview/New action; click its chevron to
+expand/collapse without changing the workspace. Enter activates the database;
+Left/Right arrows control expansion. Shift+F10 opens its context menu.
+
+Each console owns its ID, draft, results, request/cancel state, and immutable
+connection/database binding. Database simulations can finish in an inactive tab
+and update only that tab's result snapshot. Closing a console cancels its pending
+simulation and discards its window draft/results. At least one workspace remains
+open. Left/Right/Home/End navigate the tab strip. The prototype closes drafts
+directly; a production editor needs an unsaved-work policy before adding file
+persistence or valuable user sessions.
+
+This user-requested design supersedes the single-workspace plan. Persistent tabs
+and history remain deferred. Kafka/HTTP operations still cancel on navigation;
+independent background execution is demonstrated for database operations only.
 
 ### Resource search and workspace context
 
@@ -60,11 +78,12 @@ expansion never changes this execution context.
 ### Per-resource drafts and resizing
 
 Keep editor inputs separately per full resource identity in the current window:
-SQL/Find text, Kafka consume settings/publish payloads, and HTTP request fields.
+resource filters, each console's query text, Kafka consume settings/publish
+payloads, and HTTP request fields.
 Returning to a resource restores its own draft and view rather than inheriting
 the last tool's inputs. Restoring a draft never starts execution or restores a
-previous in-flight operation. This is single-workspace draft retention, not the
-stretch feature of multiple independently running tabs.
+previous in-flight operation. Database jobs already running in another open tab
+may finish without changing the active tab; restoration never resubmits them.
 
 The prototype stores drafts only in JavaScript memory; reload clears them.
 Dedicated password/token inputs and HTTP header text are excluded and reset on
@@ -73,7 +92,7 @@ be logged or persisted implicitly. Persistent draft storage remains deferred.
 
 Drag the divider to resize the desktop explorer (260–440 px); Left/Right arrows
 adjust its width, Home/End choose bounds, and double-click resets to 300 px.
-The SQL/Find textarea has a native vertical resize handle. Layout sizes are not
+The console textarea has a native vertical resize handle. Layout sizes are not
 saved. Narrow layouts stack the explorer and hide the desktop divider.
 
 ### Result detail drawer
@@ -117,9 +136,10 @@ by the current credentials. Do not add a fake schema level for MongoDB.
 
 - Each branch has a disclosure chevron and visible indentation/guide lines.
   Connection, database, and PostgreSQL schema branches expand independently.
-- Clicking a branch toggles its children; it does not run queries or change the
-  active result target. Clicking a table/collection selects that resource and
-  opens its workspace. Highlight the selected leaf, not an unrelated connection.
+- Clicking a branch chevron toggles its children without running queries or
+  changing the active result target. A database label opens its overview/New
+  action. A table/collection opens or reuses its data tab. Highlight the resource,
+  or its bound database for a console tab.
 - Keep expansion state per node while navigating between resources. Collapsing
   a branch hides only its descendants and leaves the active workspace intact.
 - In the real app, load a branch's metadata on first expansion. Show loading,
@@ -186,17 +206,28 @@ opening a persistent connection. Auth belongs to session/request configuration.
 
 Select a connected profile, expand database/schema/table, then open a table.
 Data opens a bounded preview; Structure lists column name, type, nullability,
-default, and key indicators. SQL opens the editor without automatically executing
-text. Explicit Refresh reloads metadata and completion candidates.
+default, and key indicators. Data has a filter text field for a SQL WHERE expression
+such as `id > 10 AND name LIKE 'A%'`; Apply/Enter targets only the selected table.
+Empty text clears the filter. Explicit Refresh reloads metadata/completions.
+
+For free SQL, select the database → New → Query Console. The new tab is bound to
+that database, independent of the current table. Opening another console never
+replaces an existing console draft.
 
 Keep the active profile/database visible beside Run. Use full resource identity
 internally, so equal table names in different schemas cannot collide.
 
 ### 4. Explore MongoDB
 
-Expand profile/database/collection. Find shows Filter (`{}`), Projection (`{}`),
-ordered Sort entries, Limit (100), and Run/Cancel. Use JSON/Extended JSON editors
-for filter/projection and a simple ordered sort-field control for the first UI.
+Expand profile/database/collection. Data uses a filter text field such as
+`{ "active": true }`; empty text means `{}`. Apply validates a JSON object.
+Projection, ordered Sort, and Limit remain planned advanced Find controls; the
+current prototype demonstrates the filter, not those advanced controls.
+
+Database → New → Query Console opens a command-JSON editor, for example
+`{ "find": "customers", "filter": {}, "limit": 100 }`. It does not evaluate
+`db.collection.find(...)`, JavaScript, or mongosh scripts. Actual supported
+commands and authorization require a separate backend contract.
 
 Results use an expandable document list and a formatted JSON detail panel.
 Sampled fields shows field path, observed types, and the number of documents
@@ -404,6 +435,10 @@ completion menu or dialog is open. Do not steal ordinary editor typing shortcuts
 16. Inspect a NULL, document, Kafka message, and completed HTTP response. Copy a
     value; copy a Kafka message to Publish without sending. Resize the explorer
     with pointer and keyboard, then verify the narrow layout.
+17. Apply table/collection text filters; open two consoles from the same database
+    and another database's console. Verify separate drafts/results and captured
+    targets. Switch tabs while running, cancel one job, and close a running
+    console without affecting another tab or leaking late results.
 
 The wireframe demonstrates layout only and does not validate these production
 behaviors. Verify them in Wails once real bindings and database operations exist.

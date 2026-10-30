@@ -32,6 +32,26 @@ copy-to-publish fills a draft only and must never call the producer automaticall
 
 ## Proposed Wails surface
 
+Resource browsing uses text filters; database New → Query Console creates a new
+console ID with captured connection/database identity. Several consoles may target
+one database. A table-preview/filter operation needs structured resource identity
+and a documented expression contract. Quote identifiers safely; arbitrary WHERE
+text does not become safe through value parameterization. Define supported syntax,
+single-expression handling, permissions, limits, and timeouts in Go. Collection
+filters remain parsed document objects passed to FindDocuments.
+
+PostgreSQL consoles call ExecuteSQL. MongoDB command-JSON consoles need a distinct
+ExecuteMongoCommand contract with an explicit supported/authorized command set;
+never evaluate JavaScript. The current prototype validates object-shaped JSON and
+returns fixed samples only; it implements no database authorization or commands.
+
+Each tab owns draft, result snapshot, request ID, running/canceled/error state,
+and close cleanup. Route completion to its originating tab, even while inactive.
+Cancel targets only that tab's operation; closing a running console prevents late
+output from recreating it. This prototype discards closed console drafts/results
+and retains at least one workspace. Define an unsaved-work policy before real
+session persistence. Kafka/HTTP still cancel on navigation in this prototype.
+
 | Operation | Inputs | Result |
 | --- | --- | --- |
 | ListAdapters | None | Stable IDs/kinds, names, categories, keywords/capability IDs, compatibility/availability, config renderer/schema references |

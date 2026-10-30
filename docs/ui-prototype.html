@@ -46,6 +46,15 @@
     #detail-value { min-height: 340px; margin-top: 16px; color: #213047; }
     #detail-source { overflow-wrap: anywhere; }
     .screen-reader-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+    .workspace-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 18px; border-bottom: 1px solid #d8e0ea; }
+    .workspace-tab { display: flex; align-items: center; flex: 0 0 auto; border: 1px solid #d8e0ea; border-radius: 6px; background: white; }
+    .workspace-tab:has([aria-selected="true"]) { border-color: #2457c5; background: #eaf1ff; }
+    .workspace-tab button { border: 0; background: transparent; }
+    .workspace-tab [role="tab"] { display: flex; gap: 8px; align-items: center; }
+    .workspace-tab small { color: #53657a; }
+    .context-menu { position: fixed; z-index: 50; width: 220px; padding: 6px; border: 1px solid #c6d0dd; border-radius: 8px; background: white; box-shadow: 0 8px 28px #21304726; }
+    .context-menu button { display: block; width: 100%; text-align: left; border: 0; }
+    .context-menu [role="menu"] { padding-left: 12px; border-top: 1px solid #e2e8f0; margin-top: 4px; }
     .tree, .tree ul { list-style: none; margin: 0; padding: 0; }
     .tree { margin-top: 16px; }
     .tree ul { margin-left: 16px; border-left: 1px solid #d8e0ea; padding-left: 4px; }
@@ -138,17 +147,24 @@
     </aside>
     <div id="sidebar-resize" class="splitter" role="separator" aria-label="Resize explorer" aria-orientation="vertical" aria-controls="explorer workspace" aria-valuemin="260" aria-valuemax="440" aria-valuenow="300" tabindex="0" title="Drag or use Left/Right arrows to resize; double-click to reset"></div>
     <main id="workspace">
+      <div id="workspace-tabs" class="workspace-tabs" role="tablist" aria-label="Open workspaces"></div>
+      <div id="tab-content" role="tabpanel" tabindex="0">
       <nav aria-label="Active resource"><ol class="breadcrumb" id="breadcrumbs"></ol></nav>
       <div class="heading"><div><h2 id="resource">public.users</h2><div class="muted" id="target">Local PostgreSQL / appdb</div></div><span class="eyebrow" id="workspace-purpose">Query and inspect</span></div>
       <div class="workspace-state"><span class="badge">Demo · no live connection</span><span class="draft-label" id="draft-status">Window draft · not saved to disk</span></div>
+      <section id="database-overview" class="card" aria-label="Database actions" hidden>
+        <div class="card-head"><strong>Database workspace</strong><button id="database-new" aria-haspopup="menu" aria-expanded="false" aria-controls="database-menu">New ▾</button></div>
+        <div class="panel-pad"><p>Choose <strong>New → Query Console</strong> to open an independent editor bound to this database.</p><p class="muted">Select a table or collection in the explorer to browse its data using a filter field. Right-click this database in the explorer for the same New action.</p></div>
+      </section>
       <div class="switcher" id="database-views" role="group" aria-label="Workspace view">
-        <button id="query-view" aria-pressed="true">SQL workspace</button>
+        <button id="query-view" aria-pressed="true">Data</button>
         <button id="structure-view" aria-pressed="false">Structure</button>
       </div>
       <section id="query-panel" aria-label="Query workspace">
         <div class="card">
-          <div class="card-head"><strong id="editor-title">SQL editor</strong><span class="muted">Ctrl/Cmd+Enter · drag editor corner to resize</span></div>
-          <div class="editor"><label id="input-label" for="query">Statement</label><textarea id="query" spellcheck="false">SELECT id, name, email FROM public.users;</textarea></div>
+          <div class="card-head"><strong id="editor-title">SQL editor</strong><span class="muted" id="editor-hint">Enter to apply filter</span></div>
+          <div class="editor" id="console-editor" hidden><label id="input-label" for="query">Statement</label><textarea id="query" spellcheck="false">SELECT id, name, email FROM public.users;</textarea><p class="muted" id="console-language">Free-form SQL · this console is bound to its database.</p></div>
+          <div class="editor" id="filter-editor"><label for="resource-filter" id="filter-label">Filter rows (SQL WHERE expression)</label><input id="resource-filter" type="text" spellcheck="false" placeholder="e.g. id > 10 AND name LIKE 'A%'"><p class="muted">Applies to this resource only. For a free query, select its database → New → Query Console.</p></div>
           <div class="toolbar"><button class="primary" id="run">Simulate Run</button><button id="cancel" disabled>Cancel</button><span class="muted">Preview: 100 · timeout: 30s (proposed defaults)</span></div>
         </div>
         <div class="card">
@@ -222,7 +238,12 @@
           <pre id="http-response-headers" hidden>No response headers yet.</pre>
         </div>
       </section>
+      </div>
     </main>
+  </div>
+  <div id="database-menu" class="context-menu" role="menu" aria-label="Database context menu" hidden>
+    <button id="database-menu-new" role="menuitem" aria-haspopup="menu" aria-expanded="false" aria-controls="database-new-submenu">New ▸</button>
+    <div id="database-new-submenu" role="menu" aria-label="New database item" hidden><button id="new-query-console" role="menuitem">Query Console</button></div>
   </div>
   <dialog id="connection-dialog" aria-labelledby="connection-title" aria-describedby="connection-description">
     <div class="dialog-head"><h2 id="connection-title">Add connection</h2><button id="close-dialog" aria-label="Close connection dialog">✕</button></div>
@@ -260,7 +281,6 @@
     const $ = id => document.getElementById(id);
     let kind = 'postgres';
     let selectedResource = 'pg-users';
-    let timer = null;
     let kafkaTimer = null;
     let httpTimer = null;
     let publishTimer = null;
@@ -274,9 +294,14 @@
     let detailOpener = null;
     let detailTransfer = null;
     let httpResultTarget = '';
+    let menuDatabase = null;
+    let consoleSequence = 0;
+    const openTabs = new Map();
+    const databaseRuns = new Map();
+    const resultSnapshots = new Map();
     const drafts = new Map();
     const draftFields = {
-      postgres: ['query'], mongo: ['query'],
+      postgres: ['query', 'resource-filter'], mongo: ['query', 'resource-filter'],
       kafka: ['kafka-partition', 'kafka-start', 'kafka-offset', 'kafka-limit', 'kafka-duration', 'publish-partition', 'publish-format', 'produce-key', 'publish-headers', 'produce-value'],
       http: ['http-method', 'http-url', 'http-params', 'http-auth', 'http-body']
     };
@@ -339,7 +364,7 @@
       'http-orders': { kind: 'http', resource: 'POST /orders', target: 'Example API', method: 'POST', url: 'https://api.example.test/orders' }
     };
     const hierarchy = [
-      { id: 'postgres', label: 'Local PostgreSQL', icon: 'database', type: 'connection', children: [
+      { id: 'postgres', kind: 'postgres', label: 'Local PostgreSQL', icon: 'database', type: 'connection', children: [
         { id: 'pg-appdb', label: 'appdb', type: 'database', children: [
           { id: 'pg-public', label: 'public', type: 'schema', children: [
             { id: 'pg-users', label: 'users', type: 'table' },
@@ -347,7 +372,7 @@
           ] }
         ] }
       ] },
-      { id: 'mongo', label: 'Local MongoDB', icon: 'mongo', type: 'connection', children: [
+      { id: 'mongo', kind: 'mongo', label: 'Local MongoDB', icon: 'mongo', type: 'connection', children: [
         { id: 'mongo-shop', label: 'shop', type: 'database', children: [
           { id: 'mongo-customers', label: 'customers', type: 'collection' },
           { id: 'mongo-orders', label: 'orders', type: 'collection' }
@@ -367,7 +392,82 @@
       ] }
     ];
     function activeSample() {
-      return { ...samples[kind], ...resources[selectedResource] };
+      const sample = { ...samples[kind], ...resources[selectedResource] };
+      sample.target ||= resourcePath($(sample.databaseNode || selectedResource)).slice(0, 2).join(' / ');
+      return sample;
+    }
+    function workspacePath(id = selectedResource) {
+      const resource = resources[id];
+      return resource?.console ? [...resourcePath($(resource.databaseNode)), resource.resource] : resourcePath($(id));
+    }
+    function renderTabs() {
+      $('workspace-tabs').replaceChildren();
+      for (const id of openTabs.keys()) {
+        const resource = { ...samples[resources[id].kind], ...resources[id] };
+        const holder = document.createElement('div'); holder.className = 'workspace-tab';
+        const tab = document.createElement('button'); tab.type = 'button'; tab.id = 'tab-' + id;
+        tab.setAttribute('role', 'tab'); tab.setAttribute('aria-selected', String(id === selectedResource));
+        tab.setAttribute('aria-controls', 'tab-content'); tab.tabIndex = id === selectedResource ? 0 : -1;
+        tab.title = workspacePath(id).join(' / ');
+        const label = document.createElement('span'); label.textContent = resource.database ? 'Database' : resource.resource;
+        const database = document.createElement('small'); database.textContent = workspacePath(id)[1] || '';
+        tab.append(createIcon(resource.kind === 'postgres' ? 'database' : resource.kind === 'mongo' ? 'mongo' : resource.kind === 'kafka' ? 'kafka' : 'api'), label, database);
+        tab.addEventListener('click', () => { select(id); $('tab-' + id).focus(); });
+        const close = document.createElement('button'); close.type = 'button'; close.textContent = '×';
+        close.disabled = openTabs.size === 1;
+        close.setAttribute('aria-label', 'Close ' + resource.resource); close.title = 'Close tab; console drafts are discarded';
+        close.addEventListener('click', () => closeTab(id));
+        holder.append(tab, close); $('workspace-tabs').append(holder);
+      }
+      $('tab-content').setAttribute('aria-labelledby', 'tab-' + selectedResource);
+    }
+    function closeTab(id) {
+      // Retain at least one workspace. Closing a console explicitly discards its window draft.
+      if (openTabs.size === 1 && id === selectedResource) return;
+      const ids = [...openTabs.keys()];
+      if (id === selectedResource) {
+        const index = ids.indexOf(id);
+        select(ids[index > 0 ? index - 1 : 1]);
+      }
+      cancelDatabaseRun(id);
+      openTabs.delete(id);
+      if (resources[id].console) { drafts.delete(id); resultSnapshots.delete(id); delete resources[id]; }
+      renderTabs(); $('tab-' + selectedResource).focus();
+    }
+    function hideDatabaseMenu() {
+      $('database-menu').hidden = true; $('database-new-submenu').hidden = true;
+      $('database-menu-new').setAttribute('aria-expanded', 'false'); $('database-new').setAttribute('aria-expanded', 'false');
+    }
+    function showDatabaseMenu(id, x, y) {
+      menuDatabase = id; $('database-menu').hidden = false; $('database-new-submenu').hidden = true;
+      $('database-menu-new').setAttribute('aria-expanded', 'false');
+      $('database-menu').style.left = Math.max(8, Math.min(x, innerWidth - 228)) + 'px';
+      $('database-menu').style.top = Math.max(8, Math.min(y, innerHeight - 120)) + 'px';
+      $('database-menu-new').focus();
+    }
+    function openQueryConsole(databaseId) {
+      const database = resources[databaseId];
+      if (!database?.database) return;
+      const id = 'console-' + (++consoleSequence);
+      resources[id] = { kind: database.kind, console: true, databaseNode: databaseId,
+        resource: 'Query Console ' + consoleSequence, target: resourcePath($(databaseId)).join(' / '),
+        query: database.kind === 'postgres' ? 'SELECT current_database(), now();' : '{ "find": "customers", "filter": {}, "limit": 100 }' };
+      clearExplorer(); revealResource(databaseId); hideDatabaseMenu(); select(id); $('query').focus();
+    }
+    function renderDatabaseResults() {
+      const sample = activeSample();
+      const snapshot = resultSnapshots.get(selectedResource);
+      $('results').innerHTML = snapshot?.html || (sample.console ? '<p class="empty">No query run in this console. Run to see fictional sample output.</p>' : sample.results);
+      enhanceResults();
+      $('result-status').textContent = databaseRuns.has(selectedResource) ? 'Simulation running in this tab…' : snapshot?.status || (sample.console ? 'Not run' : 'Sample output');
+      $('run').disabled = databaseRuns.has(selectedResource); $('cancel').disabled = !databaseRuns.has(selectedResource);
+    }
+    function cancelDatabaseRun(id) {
+      const job = databaseRuns.get(id);
+      if (!job) return;
+      clearTimeout(job.timer); databaseRuns.delete(id);
+      resultSnapshots.set(id, { html: resultSnapshots.get(id)?.html || (resources[id].console ? '<p class="empty">Operation canceled.</p>' : { ...samples[resources[id].kind], ...resources[id] }.results), status: 'Canceled · previous output retained' });
+      if (id === selectedResource) renderDatabaseResults();
     }
     function resourcePath(item) {
       const path = [];
@@ -416,7 +516,7 @@
         $('explorer-search-status').textContent = matches + ' matching resources';
       }
       const visible = nodes.filter(node => !node.closest('[hidden], .search-hidden'));
-      const preferred = visible.find(node => node.id === selectedResource) || visible[0];
+      const preferred = visible.find(node => node.id === (resources[selectedResource]?.databaseNode || selectedResource)) || visible[0];
       nodes.forEach(node => { node.tabIndex = node === preferred ? 0 : -1; });
     }
     function clearExplorer() { $('explorer-search').value = ''; filterExplorer(); }
@@ -432,7 +532,7 @@
       const draft = drafts.get(selectedResource);
       if (draft) {
         for (const [id, value] of Object.entries(draft.values)) $(id).value = value;
-        if (kind === 'postgres' || kind === 'mongo') view(draft.structure);
+        if ((kind === 'postgres' || kind === 'mongo') && !activeSample().database) view(draft.structure);
         if (kind === 'kafka') kafkaView(draft.publish);
         if (kind === 'http') document.querySelector('[data-request-tab="' + draft.requestTab + '"]').click();
       }
@@ -443,7 +543,7 @@
         kafkaPosition(); $('publish-value-label').textContent = $('publish-format').value === 'json' ? 'JSON payload' : 'Text payload';
       }
       $('breadcrumbs').replaceChildren();
-      const path = resourcePath($(selectedResource));
+      const path = workspacePath();
       path.forEach((name, index) => {
         const item = document.createElement('li'); item.textContent = name;
         if (index === path.length - 1) item.setAttribute('aria-current', 'page');
@@ -451,12 +551,13 @@
       });
       $('draft-status').textContent = draft ? 'Draft restored · this window only' : 'Window draft · not saved to disk';
       workspaceLoaded = true;
+      renderTabs();
     }
     function openDetail({ title, type, value, source, message }) {
       detailOpener = document.activeElement;
       $('detail-title').textContent = title;
       $('detail-type').textContent = type;
-      $('detail-source').textContent = source || resourcePath($(selectedResource)).join(' / ');
+      $('detail-source').textContent = source || workspacePath().join(' / ');
       $('detail-value').value = value;
       $('detail-copy-state').textContent = '';
       detailTransfer = message ? { resource: selectedResource, message } : null;
@@ -486,10 +587,15 @@
         $('results').append(button);
       }
     }
-    function buildTree(nodes, parent) {
+    function buildTree(nodes, parent, inheritedKind) {
       for (const node of nodes) {
+        const nodeKind = node.kind || inheritedKind;
         const item = document.createElement('li');
         item.id = node.id; item.tabIndex = -1;
+        item.dataset.resourceType = node.type;
+        if (node.type === 'database' && ['postgres', 'mongo'].includes(nodeKind)) {
+          resources[node.id] = { kind: nodeKind, database: true, databaseNode: node.id, resource: node.label };
+        }
         item.setAttribute('role', 'treeitem');
         item.setAttribute('aria-labelledby', node.id + '-label');
         item.setAttribute('aria-selected', 'false');
@@ -508,7 +614,7 @@
           const expanded = node.expanded ?? ['postgres', 'pg-appdb', 'pg-public'].includes(node.id);
           item.setAttribute('aria-expanded', String(expanded));
           item.setAttribute('aria-controls', group.id); group.hidden = !expanded;
-          buildTree(node.children, group); item.append(group);
+          buildTree(node.children, group, nodeKind); item.append(group);
         }
         parent.append(item);
       }
@@ -523,11 +629,11 @@
       document.getElementById(item.getAttribute('aria-controls')).hidden = !expanded;
     }
     function activate(item) {
-      if (item.hasAttribute('aria-expanded')) toggle(item);
+      if (resources[item.id]?.database) { toggle(item, true); select(item.id); }
+      else if (item.hasAttribute('aria-expanded')) toggle(item);
       else select(item.id);
     }
     function stop() {
-      clearTimeout(timer); timer = null;
       $('run').disabled = false; $('cancel').disabled = true;
       clearTimeout(kafkaTimer); kafkaTimer = null;
       $('kafka-start-button').disabled = false; $('kafka-stop').disabled = true;
@@ -538,23 +644,26 @@
     }
     function select(resourceId) {
       saveDraft(); workspaceLoaded = false;
+      hideDatabaseMenu(); openTabs.set(resourceId, true);
       stop(); selectedResource = resourceId; kind = resources[resourceId].kind;
       const sample = activeSample();
       $('tree').querySelectorAll('[role="treeitem"]').forEach(node => {
-        node.setAttribute('aria-selected', String(node.id === resourceId));
-        node.tabIndex = node.id === resourceId ? 0 : -1;
+        node.setAttribute('aria-selected', String(node.id === (sample.databaseNode || resourceId)));
+        node.tabIndex = node.id === (sample.databaseNode || resourceId) ? 0 : -1;
       });
       $('resource').textContent = sample.resource;
       $('target').textContent = sample.target;
       const database = kind === 'postgres' || kind === 'mongo';
       $('workspace-purpose').textContent = database ? 'Query and inspect' : kind === 'http' ? 'Compose and send' : 'Kafka messages';
-      $('database-views').hidden = !database;
-      $('query-panel').hidden = !database;
+      $('database-overview').hidden = !sample.database;
+      $('database-views').hidden = !database || sample.database || sample.console;
+      $('query-panel').hidden = !database || !!sample.database;
       $('structure-panel').hidden = true;
       $('kafka-panel').hidden = kind !== 'kafka';
       $('http-panel').hidden = kind !== 'http';
       $('http-token').value = '';
       $('inspect-http-response').disabled = true; httpResultTarget = '';
+      if (sample.database) { finishSelection(); return; }
       if (kind === 'kafka') {
         $('kafka-publish-form').reset();
         const defaults = { 'kafka-partition': 'all', 'kafka-start': 'latest', 'kafka-offset': '0', 'kafka-limit': '100', 'kafka-duration': '30' };
@@ -583,37 +692,51 @@
         return;
       }
       view(false);
-      $('query-view').textContent = sample.view;
+      $('query-view').textContent = 'Data';
       $('structure-view').textContent = sample.structureView;
       $('structure-title').textContent = kind === 'postgres' ? 'Columns' : 'Sampled fields';
-      $('editor-title').textContent = sample.title;
-      $('input-label').textContent = sample.label;
+      $('editor-title').textContent = sample.console ? (kind === 'postgres' ? 'SQL query console' : 'MongoDB command console') : (kind === 'postgres' ? 'Filter table rows' : 'Filter collection documents');
+      $('editor-hint').textContent = sample.console ? 'Ctrl/Cmd+Enter · drag editor corner to resize' : 'Enter to apply filter';
+      $('input-label').textContent = kind === 'postgres' ? 'SQL statement' : 'MongoDB command (JSON)';
+      $('console-language').textContent = kind === 'postgres' ? 'Free-form SQL · bound to this database.' : 'Native MongoDB command JSON · JavaScript/mongosh scripts are not executed.';
+      $('console-editor').hidden = !sample.console; $('filter-editor').hidden = !!sample.console;
+      $('filter-label').textContent = kind === 'postgres' ? 'Filter rows (SQL WHERE expression)' : 'Filter documents (JSON)';
+      $('resource-filter').placeholder = kind === 'postgres' ? "e.g. id > 10 AND name LIKE 'A%'" : 'e.g. { "active": true }';
+      $('resource-filter').value = '';
+      $('run').textContent = sample.console ? 'Simulate Run' : 'Simulate Apply filter';
       $('query').value = sample.query;
-      // These fragments are fixed fictional constants, never database/user content.
-      $('results').innerHTML = sample.results;
-      enhanceResults();
+      renderDatabaseResults();
       $('structure').innerHTML = sample.structure;
-      $('result-status').textContent = 'Sample output';
       $('status').textContent = 'Demo profile selected: ' + sample.target + '. No live connection.';
       finishSelection();
     }
     function view(structure) {
       if (kind !== 'postgres' && kind !== 'mongo') return;
+      if (activeSample().database) return;
+      if (activeSample().console) structure = false;
       $('query-panel').hidden = structure;
       $('structure-panel').hidden = !structure;
       $('query-view').setAttribute('aria-pressed', String(!structure));
       $('structure-view').setAttribute('aria-pressed', String(structure));
     }
     function run() {
-      if (timer !== null || $('query-panel').hidden || $('connection-dialog').open || $('value-drawer').open) return;
+      if (databaseRuns.has(selectedResource) || $('query-panel').hidden || $('connection-dialog').open || $('value-drawer').open) return;
+      const id = selectedResource; const sample = activeSample();
+      if (kind === 'mongo') {
+        try {
+          const value = JSON.parse(sample.console ? $('query').value : $('resource-filter').value || '{}');
+          if (!value || Array.isArray(value) || typeof value !== 'object') throw new Error('Enter a JSON object.');
+        } catch (error) { $('result-status').textContent = 'Invalid JSON: ' + error.message; return; }
+      }
       $('run').disabled = true; $('cancel').disabled = false;
       $('result-status').textContent = 'Previous sample · simulation running';
       $('status').textContent = 'Simulating a request. Cancel is available.';
-      timer = setTimeout(() => {
-        stop(); $('results').innerHTML = activeSample().results; enhanceResults();
-        $('result-status').textContent = kind === 'postgres' ? '2 sample rows' : '1 sample document';
-        $('status').textContent = 'Simulation complete. No query was sent to a database.';
-      }, 1200);
+      const job = { timer: setTimeout(() => {
+        databaseRuns.delete(id);
+        resultSnapshots.set(id, { html: sample.results, status: sample.console ? 'Query simulated · fixed sample output' : 'Filter simulated · fixed sample output' });
+        if (selectedResource === id) { renderDatabaseResults(); $('status').textContent = 'Simulation complete. No query was sent to a database.'; }
+      }, 900) };
+      databaseRuns.set(id, job);
     }
     const connectionForms = {
       postgres: '<div class="fields"><div><label for="conn-host">Host</label><input id="conn-host" required value="localhost"></div><div><label for="conn-port">Port</label><input id="conn-port" type="number" min="1" max="65535" required value="5432"></div><div><label for="conn-database">Database</label><input id="conn-database" required value="appdb"></div><div><label for="conn-user">Username</label><input id="conn-user" required value="viewer" autocomplete="off"></div><div><label for="conn-password">Password · session only</label><input id="conn-password" type="password" autocomplete="off"></div><div><label for="conn-tls">TLS mode</label><select id="conn-tls"><option>verify-full</option><option>verify-ca</option><option>require</option><option>disable (local development)</option></select></div></div>',
@@ -1001,10 +1124,47 @@
       event.preventDefault(); resizeSidebar(event.key === 'Home' ? 260 : event.key === 'End' ? 440 : width + (event.key === 'ArrowRight' ? 16 : -16));
     });
     buildTree(hierarchy, $('tree'));
+    $('database-new').addEventListener('click', event => {
+      const rect = event.currentTarget.getBoundingClientRect();
+      showDatabaseMenu(selectedResource, rect.left, rect.bottom + 4);
+      event.currentTarget.setAttribute('aria-expanded', 'true');
+    });
+    function showNewSubmenu() {
+      $('database-new-submenu').hidden = false;
+      $('database-menu-new').setAttribute('aria-expanded', 'true'); $('new-query-console').focus();
+    }
+    $('database-menu-new').addEventListener('click', showNewSubmenu);
+    $('new-query-console').addEventListener('click', () => openQueryConsole(menuDatabase));
+    $('database-menu').addEventListener('keydown', event => {
+      if (event.key === 'Escape') {
+        event.preventDefault(); hideDatabaseMenu(); if ($(menuDatabase)) focusItem($(menuDatabase));
+      } else if (['ArrowRight', 'ArrowDown'].includes(event.key)) {
+        event.preventDefault(); showNewSubmenu();
+      } else if (['ArrowLeft', 'ArrowUp'].includes(event.key)) {
+        event.preventDefault(); $('database-menu-new').focus();
+      }
+    });
+    document.addEventListener('pointerdown', event => {
+      if (!event.target.closest('#database-menu, #database-new')) hideDatabaseMenu();
+    });
+    $('tree').addEventListener('contextmenu', event => {
+      const item = event.target.closest('[role="treeitem"]');
+      if (!resources[item?.id]?.database) return;
+      event.preventDefault(); focusItem(item); showDatabaseMenu(item.id, event.clientX, event.clientY);
+    });
+    $('workspace-tabs').addEventListener('keydown', event => {
+      const tab = event.target.closest('[role="tab"]');
+      if (!tab || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      const ids = [...openTabs.keys()]; const index = ids.indexOf(selectedResource);
+      const id = event.key === 'Home' ? ids[0] : event.key === 'End' ? ids[ids.length - 1] : ids[(index + (event.key === 'ArrowRight' ? 1 : -1) + ids.length) % ids.length];
+      event.preventDefault(); select(id); $('tab-' + id).focus();
+    });
     $('tree').addEventListener('click', event => {
       const row = event.target.closest('.tree-row');
       if (!row) return;
-      const item = row.parentElement; focusItem(item); activate(item);
+      const item = row.parentElement; focusItem(item);
+      if (event.target.closest('.chevron') && item.hasAttribute('aria-expanded')) toggle(item);
+      else activate(item);
     });
     $('tree').addEventListener('keydown', event => {
       const item = event.target.closest('[role="treeitem"]');
@@ -1013,6 +1173,14 @@
       const index = visible.indexOf(item);
       let destination;
       switch (event.key) {
+        case 'ContextMenu':
+          if (!resources[item.id]?.database) return;
+          { const rect = item.firstElementChild.getBoundingClientRect(); showDatabaseMenu(item.id, rect.left + 24, rect.bottom); }
+          break;
+        case 'F10':
+          if (!event.shiftKey || !resources[item.id]?.database) return;
+          { const rect = item.firstElementChild.getBoundingClientRect(); showDatabaseMenu(item.id, rect.left + 24, rect.bottom); }
+          break;
         case 'ArrowDown': destination = visible[Math.min(index + 1, visible.length - 1)]; break;
         case 'ArrowUp': destination = visible[Math.max(index - 1, 0)]; break;
         case 'Home': destination = visible[0]; break;
@@ -1034,9 +1202,12 @@
     $('structure-view').addEventListener('click', () => view(true));
     $('run').addEventListener('click', run);
     $('cancel').addEventListener('click', () => {
-      stop(); $('result-status').textContent = 'Canceled · previous sample retained';
+      cancelDatabaseRun(selectedResource);
       $('status').textContent = 'Simulation canceled. You can run again.';
       $('run').focus();
+    });
+    $('resource-filter').addEventListener('keydown', event => {
+      if (event.key === 'Enter' && !event.ctrlKey && !event.metaKey) { event.preventDefault(); run(); }
     });
     document.addEventListener('keydown', event => {
       if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !$('connection-dialog').open && !$('value-drawer').open) {

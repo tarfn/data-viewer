@@ -29,13 +29,16 @@ integrations small; external installable plugins remain deferred.
 | Connect and disconnect | Host, port, database, user, password, TLS | Connection URI and database |
 | Test connection | Ping with timeout | Ping with timeout |
 | Browse structure | Schemas, tables, columns, primary/foreign keys | Databases, collections, sampled fields |
-| Read data | SQL editor and results grid | Find form, document list, JSON viewer |
+| Read data | Table filter field; database-level SQL console tabs | Collection filter field, document list, JSON viewer |
 | Query controls | Run, cancel, timeout, bounded result preview | Filter, projection, sort, limit, cancel, timeout |
 | Autocomplete | Keywords, schemas, tables, columns | Operators and sampled field names |
 | Profiles | Save non-secret settings; prompt for password | Save non-secret settings; prompt for credentials |
 
-Errors and loading states are required. Multiple query tabs and persistent
-history are stretch goals and should be cut first if the schedule slips.
+Errors and loading states are required. The user subsequently requested
+database-level New → Query Console tabs with separate resource filter fields.
+This replaces the earlier single-editor UI plan. History/session restoration
+remain stretch goals. The prototype also explores MongoDB command-JSON consoles;
+command execution needs its own backend contract beyond the initial Find adapter.
 
 ### Explicitly deferred
 
@@ -54,14 +57,14 @@ history are stretch goals and should be cut first if the schedule slips.
 | Oct 29–Nov 4 | Small PostgreSQL and MongoDB CLI experiments | Modules, structs, methods, errors, context | Print SQL rows and MongoDB documents; exit cleanly |
 | Nov 5–11 | Wails shell and connection form | Packages, lifecycle, frontend bindings | Connect from the UI; explain failed connection attempts |
 | Nov 12–18 | PostgreSQL structure explorer | pgx, metadata queries, scanning | Expand schemas and tables; inspect columns and keys |
-| Nov 19–25 | SQL editor and result grid | Dynamic values, cleanup, cancellation | Execute SQL; cancel a slow query; show empty results |
+| Nov 19–25 | Table filters, SQL console tabs, result grid | Dynamic values, request identity, cleanup, cancellation | Execute/cancel in database-bound consoles; isolate results; show empty states |
 | Nov 26–Dec 2 | MongoDB explorer and Find form | BSON, Extended JSON, cursors | Browse collections; filter, project, and sort documents |
 | Dec 3–9 | Basic autocomplete | Metadata caching and data contracts | Suggest SQL names and MongoDB operators/observed fields |
-| Dec 10–16 | Saved non-secret profiles; optional tabs/history | File handling and lifecycle management | Restart and reconnect from a profile without saving credentials |
+| Dec 10–16 | Saved non-secret profiles; optional history | File handling and lifecycle management | Restart and reconnect from a profile without saving credentials |
 | Dec 17–23 | Integration tests and reliability fixes | Testing, race detection, errors | Handle invalid credentials, timeouts, disconnects, cancellation |
 | Dec 24–31 | Packaging, documentation, bug fixes | Desktop builds and release workflow | Install on the chosen OS and complete the end-to-end workflow |
 
-Reserve the last week for stabilization. If behind, drop optional tabs/history
+Reserve the last week for stabilization. If behind, drop optional history/persistence
 and visual polish before dropping either database's basic workflow.
 
 ## Definition of done
@@ -72,6 +75,8 @@ and visual polish before dropping either database's basic workflow.
 - [ ] Inspect PostgreSQL schemas, tables, columns, and keys.
 - [ ] Browse MongoDB databases/collections and clearly labeled sampled fields.
 - [ ] Run SQL and MongoDB finds; inspect results and empty states.
+- [ ] Filter table/collection data with text fields; open separate database query
+      consoles without retargeting drafts, results, or cancellation.
 - [ ] Receive useful basic completion suggestions for both databases.
 - [ ] Cancel slow operations and receive understandable connection/query errors.
 - [ ] Keep the UI responsive and result retrieval bounded.

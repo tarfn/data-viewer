@@ -79,6 +79,13 @@ Wails-facing methods accept a connection ID and plain request values. Go creates
 operation contexts internally; a Go context is not passed across the UI bridge.
 Adapter methods receive that context and the selected connection/client.
 
+Table/collection Data views expose scoped filter text fields. Free queries live
+in independent database-bound console tabs created from New → Query Console.
+Track console IDs separately from resource/database IDs: multiple consoles can
+share a database without sharing drafts, results, cancellation, or request state.
+MongoDB console design uses a separate native command-JSON capability, not a
+JavaScript interpreter. See the handoff for filter/command contract requirements.
+
 Illustrative adapter operations:
 
 ```text

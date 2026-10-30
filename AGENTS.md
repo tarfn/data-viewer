@@ -24,8 +24,13 @@ The proposed stack is Go + Wails + React/TypeScript, CodeMirror 6, pgx, and the
 official MongoDB Go driver. Required scope and acceptance checks are in
 [features](docs/features.md) and [the release plan](docs/release-0.0.1-plan.md).
 Kafka/HTTP, record editing, arbitrary mongosh scripts, advanced SQL parsing,
-external installable plugins, and credential persistence are deferred. Tabs and
-history are stretch goals. A reviewer should not demand them for this release.
+external installable plugins, and credential persistence are deferred. Persistent
+history/session restoration remain stretch goals. The user subsequently requested
+database-level **New → Query Console** tabs: resource views use filter text fields,
+and free-form editors open in separate database-bound console tabs. This replaces
+the earlier plan to defer all tabs. PostgreSQL consoles use SQL; MongoDB console
+design uses native command JSON, not mongosh JavaScript. All prototype execution
+remains simulated.
 
 The documentation prototype also explores Kafka/HTTP forms and workspaces at the
 user's request. These are future UI designs, not shipped integrations or added

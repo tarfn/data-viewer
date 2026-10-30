@@ -53,6 +53,11 @@ in logs or error details.
 
 ## 3. Finish PostgreSQL end to end
 
+Use an inline text filter in each table's Data view. Open free SQL from the
+database's New → Query Console action in a separate tab. Implement per-console
+request/result identity so switching the explorer or opening another console
+cannot change where SQL runs. Keep each console's draft and cancellation separate.
+
 Implement schema listing, table listing, and table details before adding SQL
 editing. Show structure in a sidebar and details panel. Then add CodeMirror,
 Run/Cancel actions, and a simple results table.
