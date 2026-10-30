@@ -63,6 +63,8 @@
     .tree-row:hover { background: #eaf0f6; }
     .tree-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .tree-kind { font-size: 10px; color: #53657a; margin-left: auto; }
+    .entity-more { flex: 0 0 26px; width: 26px; height: 28px; padding: 0; border: 0; background: transparent; font-size: 20px; line-height: 1; color: #53657a; }
+    .entity-more:hover, .entity-more[aria-expanded="true"] { background: #dce7f7; color: #1946a6; }
     .icon { display: inline-flex; width: 18px; height: 18px; flex: 0 0 18px; vertical-align: middle; color: #53657a; }
     .icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
     .icon[data-icon="database"] { color: #306c9b; }
@@ -142,7 +144,7 @@
       <p id="explorer-search-status" class="screen-reader-only" role="status" aria-live="polite"></p>
       <ul class="tree" role="tree" aria-label="Connections and database resources" id="tree"></ul>
       <p id="explorer-empty" class="muted" hidden>No matching resources. Try a different name or clear the search.</p>
-      <p class="muted">Expand a profile, then select a table, collection, topic, or request. Arrow keys navigate the tree.</p>
+      <p class="muted">Click to select or expand. Use an entity’s ⋯ menu → Open in Tab. Database ⋯ → New → Query Console opens a free-query editor.</p>
       <p class="draft-label">Drafts stay in this window. Reload clears them. Password/token inputs and HTTP headers reset on navigation.</p>
     </aside>
     <div id="sidebar-resize" class="splitter" role="separator" aria-label="Resize explorer" aria-orientation="vertical" aria-controls="explorer workspace" aria-valuemin="260" aria-valuemax="440" aria-valuenow="300" tabindex="0" title="Drag or use Left/Right arrows to resize; double-click to reset"></div>
@@ -153,8 +155,8 @@
       <div class="heading"><div><h2 id="resource">public.users</h2><div class="muted" id="target">Local PostgreSQL / appdb</div></div><span class="eyebrow" id="workspace-purpose">Query and inspect</span></div>
       <div class="workspace-state"><span class="badge">Demo · no live connection</span><span class="draft-label" id="draft-status">Window draft · not saved to disk</span></div>
       <section id="database-overview" class="card" aria-label="Database actions" hidden>
-        <div class="card-head"><strong>Database workspace</strong><button id="database-new" aria-haspopup="menu" aria-expanded="false" aria-controls="database-menu">New ▾</button></div>
-        <div class="panel-pad"><p>Choose <strong>New → Query Console</strong> to open an independent editor bound to this database.</p><p class="muted">Select a table or collection in the explorer to browse its data using a filter field. Right-click this database in the explorer for the same New action.</p></div>
+        <div class="card-head"><strong id="overview-title">Database workspace</strong><button id="database-new" aria-haspopup="menu" aria-expanded="false" aria-controls="entity-menu">Actions ▾</button></div>
+        <div class="panel-pad"><p id="overview-description">Choose New → Query Console to open an independent editor bound to this database.</p><p class="muted">Entity menus open tabs explicitly. Selecting or expanding something in the explorer leaves this workspace unchanged.</p></div>
       </section>
       <div class="switcher" id="database-views" role="group" aria-label="Workspace view">
         <button id="query-view" aria-pressed="true">Data</button>
@@ -164,7 +166,7 @@
         <div class="card">
           <div class="card-head"><strong id="editor-title">SQL editor</strong><span class="muted" id="editor-hint">Enter to apply filter</span></div>
           <div class="editor" id="console-editor" hidden><label id="input-label" for="query">Statement</label><textarea id="query" spellcheck="false">SELECT id, name, email FROM public.users;</textarea><p class="muted" id="console-language">Free-form SQL · this console is bound to its database.</p></div>
-          <div class="editor" id="filter-editor"><label for="resource-filter" id="filter-label">Filter rows (SQL WHERE expression)</label><input id="resource-filter" type="text" spellcheck="false" placeholder="e.g. id > 10 AND name LIKE 'A%'"><p class="muted">Applies to this resource only. For a free query, select its database → New → Query Console.</p></div>
+          <div class="editor" id="filter-editor"><label for="resource-filter" id="filter-label">Filter rows (SQL WHERE expression)</label><input id="resource-filter" type="text" spellcheck="false" placeholder="e.g. id > 10 AND name LIKE 'A%'"><p class="muted">Applies to this resource only. For a free query, use its database’s ⋯ → New → Query Console.</p></div>
           <div class="toolbar"><button class="primary" id="run">Simulate Run</button><button id="cancel" disabled>Cancel</button><span class="muted">Preview: 100 · timeout: 30s (proposed defaults)</span></div>
         </div>
         <div class="card">
@@ -241,10 +243,7 @@
       </div>
     </main>
   </div>
-  <div id="database-menu" class="context-menu" role="menu" aria-label="Database context menu" hidden>
-    <button id="database-menu-new" role="menuitem" aria-haspopup="menu" aria-expanded="false" aria-controls="database-new-submenu">New ▸</button>
-    <div id="database-new-submenu" role="menu" aria-label="New database item" hidden><button id="new-query-console" role="menuitem">Query Console</button></div>
-  </div>
+  <div id="entity-menu" class="context-menu" role="menu" aria-label="Entity actions" hidden></div>
   <dialog id="connection-dialog" aria-labelledby="connection-title" aria-describedby="connection-description">
     <div class="dialog-head"><h2 id="connection-title">Add connection</h2><button id="close-dialog" aria-label="Close connection dialog">✕</button></div>
     <p id="connection-description" class="muted">Choose a tool and configure a profile. This prototype adds sample resources in memory only; credentials are not saved or transmitted.</p>
@@ -294,11 +293,12 @@
     let detailOpener = null;
     let detailTransfer = null;
     let httpResultTarget = '';
-    let menuDatabase = null;
+    let menuEntity = null;
     let consoleSequence = 0;
     const openTabs = new Map();
     const databaseRuns = new Map();
     const resultSnapshots = new Map();
+    const entityMetadata = new Map();
     const drafts = new Map();
     const draftFields = {
       postgres: ['query', 'resource-filter'], mongo: ['query', 'resource-filter'],
@@ -378,13 +378,13 @@
           { id: 'mongo-orders', label: 'orders', type: 'collection' }
         ] }
       ] },
-      { id: 'kafka', label: 'Development Kafka', icon: 'kafka', type: 'future', children: [
+      { id: 'kafka', kind: 'kafka', label: 'Development Kafka', icon: 'kafka', type: 'future', children: [
         { id: 'kafka-topics', label: 'Topics', type: 'folder', children: [
           { id: 'kafka-orders', label: 'orders.created', type: 'topic' },
           { id: 'kafka-payments', label: 'payments.received', type: 'topic' }
         ] }
       ] },
-      { id: 'http', label: 'Example API', icon: 'api', type: 'future', children: [
+      { id: 'http', kind: 'http', label: 'Example API', icon: 'api', type: 'future', children: [
         { id: 'http-requests', label: 'Requests', type: 'folder', children: [
           { id: 'http-health', label: 'GET /health', type: 'request' },
           { id: 'http-orders', label: 'POST /orders', type: 'request' }
@@ -434,16 +434,50 @@
       if (resources[id].console) { drafts.delete(id); resultSnapshots.delete(id); delete resources[id]; }
       renderTabs(); $('tab-' + selectedResource).focus();
     }
-    function hideDatabaseMenu() {
-      $('database-menu').hidden = true; $('database-new-submenu').hidden = true;
-      $('database-menu-new').setAttribute('aria-expanded', 'false'); $('database-new').setAttribute('aria-expanded', 'false');
+    function hideEntityMenu() {
+      $('entity-menu').hidden = true;
+      document.querySelectorAll('.entity-more').forEach(button => button.setAttribute('aria-expanded', 'false'));
+      $('database-new').setAttribute('aria-expanded', 'false');
     }
-    function showDatabaseMenu(id, x, y) {
-      menuDatabase = id; $('database-menu').hidden = false; $('database-new-submenu').hidden = true;
-      $('database-menu-new').setAttribute('aria-expanded', 'false');
-      $('database-menu').style.left = Math.max(8, Math.min(x, innerWidth - 228)) + 'px';
-      $('database-menu').style.top = Math.max(8, Math.min(y, innerHeight - 120)) + 'px';
-      $('database-menu-new').focus();
+    const entityActionRegistry = [
+      { id: 'open-entity-tab', label: () => 'Open in Tab', supports: entity => !!resources[entity.id],
+        perform: entity => { select(entity.id); $('tab-' + entity.id).focus(); } },
+      { id: 'entity-menu-new', label: () => 'New ▸', supports: entity => !!resources[entity.id]?.database,
+        children: [{ id: 'new-query-console', label: () => 'Query Console', perform: entity => openQueryConsole(entity.id) }] },
+      { id: 'toggle-entity', label: entity => $(entity.id).getAttribute('aria-expanded') === 'true' ? 'Collapse' : 'Expand',
+        supports: entity => $(entity.id).hasAttribute('aria-expanded'), perform: entity => toggle($(entity.id)) },
+      { id: 'view-entity-indexes', label: () => 'View indexes · planned', supports: entity => ['table', 'collection'].includes(entity.type),
+        disabled: true, explanation: 'Index inspection is a future menu action; it is not implemented.' }
+    ];
+    function showEntityMenu(id, x, y) {
+      const entity = entityMetadata.get(id);
+      if (!entity) return;
+      hideEntityMenu(); menuEntity = id; $('entity-menu').replaceChildren();
+      $('entity-menu').setAttribute('aria-label', 'Actions for ' + entity.type + ' ' + entity.label);
+      function appendAction(action, parent) {
+        const button = document.createElement('button'); button.type = 'button'; button.id = action.id;
+        button.setAttribute('role', 'menuitem'); button.textContent = action.label(entity);
+        button.disabled = !!action.disabled;
+        if (action.explanation) button.title = action.explanation;
+        parent.append(button);
+        if (action.children) {
+          const submenu = document.createElement('div'); submenu.id = 'entity-new-submenu';
+          submenu.setAttribute('role', 'menu'); submenu.setAttribute('aria-label', 'New item'); submenu.hidden = true;
+          button.setAttribute('aria-haspopup', 'menu'); button.setAttribute('aria-expanded', 'false'); button.setAttribute('aria-controls', submenu.id);
+          action.children.forEach(child => appendAction(child, submenu)); parent.append(submenu);
+          button.addEventListener('click', () => { submenu.hidden = false; button.setAttribute('aria-expanded', 'true'); submenu.querySelector('button:not(:disabled)').focus(); });
+        } else button.addEventListener('click', () => {
+          if (button.disabled) return;
+          hideEntityMenu(); action.perform(entity);
+        });
+      }
+      entityActionRegistry.filter(action => action.supports(entity)).forEach(action => appendAction(action, $('entity-menu')));
+      $('entity-menu').hidden = false;
+      const trigger = $(id).querySelector(':scope > .tree-row .entity-more');
+      trigger.setAttribute('aria-expanded', 'true');
+      $('entity-menu').style.left = Math.max(8, Math.min(x, innerWidth - 228)) + 'px';
+      $('entity-menu').style.top = Math.max(8, Math.min(y, innerHeight - 200)) + 'px';
+      $('entity-menu').querySelector('button:not(:disabled)')?.focus();
     }
     function openQueryConsole(databaseId) {
       const database = resources[databaseId];
@@ -452,7 +486,7 @@
       resources[id] = { kind: database.kind, console: true, databaseNode: databaseId,
         resource: 'Query Console ' + consoleSequence, target: resourcePath($(databaseId)).join(' / '),
         query: database.kind === 'postgres' ? 'SELECT current_database(), now();' : '{ "find": "customers", "filter": {}, "limit": 100 }' };
-      clearExplorer(); revealResource(databaseId); hideDatabaseMenu(); select(id); $('query').focus();
+      clearExplorer(); revealResource(databaseId); hideEntityMenu(); select(id); $('query').focus();
     }
     function renderDatabaseResults() {
       const sample = activeSample();
@@ -517,11 +551,14 @@
       }
       const visible = nodes.filter(node => !node.closest('[hidden], .search-hidden'));
       const preferred = visible.find(node => node.id === (resources[selectedResource]?.databaseNode || selectedResource)) || visible[0];
-      nodes.forEach(node => { node.tabIndex = node === preferred ? 0 : -1; });
+      nodes.forEach(node => {
+        node.tabIndex = node === preferred ? 0 : -1;
+        node.querySelector(':scope > .tree-row .entity-more').tabIndex = node.tabIndex;
+      });
     }
     function clearExplorer() { $('explorer-search').value = ''; filterExplorer(); }
     function saveDraft() {
-      if (!workspaceLoaded) return;
+      if (!workspaceLoaded || activeSample().database || activeSample().overview) return;
       const values = Object.fromEntries(draftFields[kind].map(id => [id, $(id).value]));
       // Dedicated credential fields and potentially secret-bearing HTTP headers are excluded.
       const state = { values, structure: !$('structure-panel').hidden, publish: !$('kafka-publish-panel').hidden,
@@ -590,11 +627,14 @@
     function buildTree(nodes, parent, inheritedKind) {
       for (const node of nodes) {
         const nodeKind = node.kind || inheritedKind;
+        entityMetadata.set(node.id, { id: node.id, kind: nodeKind, type: node.type, label: node.label });
         const item = document.createElement('li');
         item.id = node.id; item.tabIndex = -1;
         item.dataset.resourceType = node.type;
         if (node.type === 'database' && ['postgres', 'mongo'].includes(nodeKind)) {
           resources[node.id] = { kind: nodeKind, database: true, databaseNode: node.id, resource: node.label };
+        } else if (node.children) {
+          resources[node.id] = { kind: nodeKind, overview: true, resource: node.label, nodeType: node.type };
         }
         item.setAttribute('role', 'treeitem');
         item.setAttribute('aria-labelledby', node.id + '-label');
@@ -606,7 +646,16 @@
         label.className = 'tree-label'; label.textContent = node.label;
         const type = document.createElement('span'); type.className = 'tree-kind';
         type.textContent = node.type; type.setAttribute('aria-hidden', 'true');
-        row.append(chevron, createIcon(node.icon || node.type), label, type); item.append(row);
+        const actions = document.createElement('button'); actions.type = 'button'; actions.className = 'entity-more'; actions.tabIndex = -1;
+        actions.textContent = '⋯'; actions.title = 'Actions for ' + node.label;
+        actions.setAttribute('aria-label', 'Actions for ' + node.type + ' ' + node.label);
+        actions.setAttribute('aria-haspopup', 'menu'); actions.setAttribute('aria-controls', 'entity-menu'); actions.setAttribute('aria-expanded', 'false');
+        actions.addEventListener('click', event => {
+          event.stopPropagation(); focusItem(item); markExplorerSelection(item);
+          if (actions.getAttribute('aria-expanded') === 'true') { hideEntityMenu(); return; }
+          const rect = actions.getBoundingClientRect(); showEntityMenu(node.id, rect.right, rect.bottom);
+        });
+        row.append(chevron, createIcon(node.icon || node.type), label, type, actions); item.append(row);
         if (node.children) {
           // Both branches stay in place; opening one never moves the other's children.
           const group = document.createElement('ul'); group.id = node.id + '-children';
@@ -620,8 +669,14 @@
       }
     }
     function focusItem(item) {
-      $('tree').querySelectorAll('[role="treeitem"]').forEach(node => { node.tabIndex = -1; });
+      $('tree').querySelectorAll('[role="treeitem"]').forEach(node => {
+        node.tabIndex = -1; node.querySelector(':scope > .tree-row .entity-more').tabIndex = -1;
+      });
       item.tabIndex = 0; item.focus();
+      item.querySelector(':scope > .tree-row .entity-more').tabIndex = 0;
+    }
+    function markExplorerSelection(item) {
+      $('tree').querySelectorAll('[role="treeitem"]').forEach(node => node.setAttribute('aria-selected', String(node === item)));
     }
     function toggle(item, expanded = item.getAttribute('aria-expanded') !== 'true') {
       if (!item.hasAttribute('aria-expanded')) return;
@@ -629,9 +684,8 @@
       document.getElementById(item.getAttribute('aria-controls')).hidden = !expanded;
     }
     function activate(item) {
-      if (resources[item.id]?.database) { toggle(item, true); select(item.id); }
-      else if (item.hasAttribute('aria-expanded')) toggle(item);
-      else select(item.id);
+      markExplorerSelection(item);
+      if (item.hasAttribute('aria-expanded')) toggle(item);
     }
     function stop() {
       $('run').disabled = false; $('cancel').disabled = true;
@@ -644,26 +698,32 @@
     }
     function select(resourceId) {
       saveDraft(); workspaceLoaded = false;
-      hideDatabaseMenu(); openTabs.set(resourceId, true);
+      hideEntityMenu(); openTabs.set(resourceId, true);
       stop(); selectedResource = resourceId; kind = resources[resourceId].kind;
       const sample = activeSample();
       $('tree').querySelectorAll('[role="treeitem"]').forEach(node => {
         node.setAttribute('aria-selected', String(node.id === (sample.databaseNode || resourceId)));
         node.tabIndex = node.id === (sample.databaseNode || resourceId) ? 0 : -1;
+        node.querySelector(':scope > .tree-row .entity-more').tabIndex = node.tabIndex;
       });
       $('resource').textContent = sample.resource;
       $('target').textContent = sample.target;
       const database = kind === 'postgres' || kind === 'mongo';
+      const overview = sample.database || sample.overview;
       $('workspace-purpose').textContent = database ? 'Query and inspect' : kind === 'http' ? 'Compose and send' : 'Kafka messages';
-      $('database-overview').hidden = !sample.database;
-      $('database-views').hidden = !database || sample.database || sample.console;
-      $('query-panel').hidden = !database || !!sample.database;
+      $('database-overview').hidden = !overview;
+      $('database-views').hidden = !database || overview || sample.console;
+      $('query-panel').hidden = !database || !!overview;
       $('structure-panel').hidden = true;
-      $('kafka-panel').hidden = kind !== 'kafka';
-      $('http-panel').hidden = kind !== 'http';
+      $('kafka-panel').hidden = kind !== 'kafka' || !!overview;
+      $('http-panel').hidden = kind !== 'http' || !!overview;
       $('http-token').value = '';
       $('inspect-http-response').disabled = true; httpResultTarget = '';
-      if (sample.database) { finishSelection(); return; }
+      if (overview) {
+        $('overview-title').textContent = sample.database ? 'Database workspace' : 'Entity overview';
+        $('overview-description').textContent = sample.database ? 'Use Actions → New → Query Console to open a database-bound editor.' : 'Browse this entity’s children and use their ⋯ menus to open data or tool workspaces in tabs.';
+        finishSelection(); return;
+      }
       if (kind === 'kafka') {
         $('kafka-publish-form').reset();
         const defaults = { 'kafka-partition': 'all', 'kafka-start': 'latest', 'kafka-offset': '0', 'kafka-limit': '100', 'kafka-duration': '30' };
@@ -712,7 +772,7 @@
     }
     function view(structure) {
       if (kind !== 'postgres' && kind !== 'mongo') return;
-      if (activeSample().database) return;
+      if (activeSample().database || activeSample().overview) return;
       if (activeSample().console) structure = false;
       $('query-panel').hidden = structure;
       $('structure-panel').hidden = !structure;
@@ -891,8 +951,8 @@
       }
       cloneNodes(root); buildTree([root], $('tree'));
       // Only non-secret labels and fixture identities were copied; credentials are discarded.
-      clearExplorer(); closeConnection(); select(firstLeaf);
-      $('status').textContent = 'Added demo profile: ' + name + '. Sample resources only; no live connection.';
+      clearExplorer(); closeConnection(); focusItem($(firstLeaf)); markExplorerSelection($(firstLeaf));
+      $('status').textContent = 'Added demo profile: ' + name + '. Use its entity menu to open a tab; no live connection.';
     });
     function kafkaPosition() {
       const offset = $('kafka-start').value === 'offset';
@@ -1126,31 +1186,35 @@
     buildTree(hierarchy, $('tree'));
     $('database-new').addEventListener('click', event => {
       const rect = event.currentTarget.getBoundingClientRect();
-      showDatabaseMenu(selectedResource, rect.left, rect.bottom + 4);
+      showEntityMenu(selectedResource, rect.left, rect.bottom + 4);
       event.currentTarget.setAttribute('aria-expanded', 'true');
     });
-    function showNewSubmenu() {
-      $('database-new-submenu').hidden = false;
-      $('database-menu-new').setAttribute('aria-expanded', 'true'); $('new-query-console').focus();
-    }
-    $('database-menu-new').addEventListener('click', showNewSubmenu);
-    $('new-query-console').addEventListener('click', () => openQueryConsole(menuDatabase));
-    $('database-menu').addEventListener('keydown', event => {
+    $('entity-menu').addEventListener('keydown', event => {
+      const current = event.target.closest('button');
+      const visible = [...$('entity-menu').querySelectorAll('button:not(:disabled)')].filter(button => !button.closest('[hidden]'));
+      const index = visible.indexOf(current);
       if (event.key === 'Escape') {
-        event.preventDefault(); hideDatabaseMenu(); if ($(menuDatabase)) focusItem($(menuDatabase));
-      } else if (['ArrowRight', 'ArrowDown'].includes(event.key)) {
-        event.preventDefault(); showNewSubmenu();
-      } else if (['ArrowLeft', 'ArrowUp'].includes(event.key)) {
-        event.preventDefault(); $('database-menu-new').focus();
+        event.preventDefault(); hideEntityMenu(); if ($(menuEntity)) focusItem($(menuEntity));
+      } else if (event.key === 'ArrowRight' && current?.hasAttribute('aria-haspopup')) {
+        event.preventDefault(); current.click();
+      } else if (event.key === 'ArrowLeft' && current?.parentElement.id === 'entity-new-submenu') {
+        event.preventDefault(); $('entity-new-submenu').hidden = true;
+        $('entity-menu-new').setAttribute('aria-expanded', 'false'); $('entity-menu-new').focus();
+      } else if (['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {
+        event.preventDefault();
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? visible.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + visible.length) % visible.length;
+        visible[next]?.focus();
+      } else if (event.key === 'Tab') {
+        event.preventDefault(); hideEntityMenu(); if ($(menuEntity)) focusItem($(menuEntity));
       }
     });
     document.addEventListener('pointerdown', event => {
-      if (!event.target.closest('#database-menu, #database-new')) hideDatabaseMenu();
+      if (!event.target.closest('#entity-menu, #database-new, .entity-more')) hideEntityMenu();
     });
     $('tree').addEventListener('contextmenu', event => {
       const item = event.target.closest('[role="treeitem"]');
-      if (!resources[item?.id]?.database) return;
-      event.preventDefault(); focusItem(item); showDatabaseMenu(item.id, event.clientX, event.clientY);
+      if (!item || !entityMetadata.has(item.id)) return;
+      event.preventDefault(); focusItem(item); markExplorerSelection(item); showEntityMenu(item.id, event.clientX, event.clientY);
     });
     $('workspace-tabs').addEventListener('keydown', event => {
       const tab = event.target.closest('[role="tab"]');
@@ -1169,17 +1233,17 @@
     $('tree').addEventListener('keydown', event => {
       const item = event.target.closest('[role="treeitem"]');
       if (!item) return;
+      if (event.target.closest('.entity-more') && ['Enter', ' '].includes(event.key)) return;
       const visible = [...$('tree').querySelectorAll('[role="treeitem"]')].filter(node => !node.closest('[hidden], .search-hidden'));
       const index = visible.indexOf(item);
       let destination;
       switch (event.key) {
         case 'ContextMenu':
-          if (!resources[item.id]?.database) return;
-          { const rect = item.firstElementChild.getBoundingClientRect(); showDatabaseMenu(item.id, rect.left + 24, rect.bottom); }
+          { const rect = item.firstElementChild.getBoundingClientRect(); showEntityMenu(item.id, rect.left + 24, rect.bottom); }
           break;
         case 'F10':
-          if (!event.shiftKey || !resources[item.id]?.database) return;
-          { const rect = item.firstElementChild.getBoundingClientRect(); showDatabaseMenu(item.id, rect.left + 24, rect.bottom); }
+          if (!event.shiftKey) return;
+          { const rect = item.firstElementChild.getBoundingClientRect(); showEntityMenu(item.id, rect.left + 24, rect.bottom); }
           break;
         case 'ArrowDown': destination = visible[Math.min(index + 1, visible.length - 1)]; break;
         case 'ArrowUp': destination = visible[Math.max(index - 1, 0)]; break;
@@ -1210,7 +1274,7 @@
       if (event.key === 'Enter' && !event.ctrlKey && !event.metaKey) { event.preventDefault(); run(); }
     });
     document.addEventListener('keydown', event => {
-      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !$('connection-dialog').open && !$('value-drawer').open) {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !$('connection-dialog').open && !$('value-drawer').open && $('entity-menu').hidden) {
         event.preventDefault();
         if (kind === 'kafka' && !$('kafka-publish-panel').hidden) {
           if (!$('produce-button').disabled) $('kafka-publish-form').requestSubmit();

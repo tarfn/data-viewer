@@ -39,12 +39,25 @@ limitations. Kafka/HTTP production integrations remain outside release 0.0.1.
 Use a tab strip for resource views and independent database query consoles.
 Tables have Data/Structure views; collections have Data/Sampled fields views.
 Both use a single-line filter text field, not a free-form query editor. For custom
-queries, select the database and choose **New → Query Console**, or right-click
-the database for the same menu. Every invocation opens a distinct console tab.
+queries, use the database's **⋯ → New → Query Console**, or right-click for the
+same menu. Every invocation opens a distinct console tab.
 
-Click a database label to open its overview/New action; click its chevron to
-expand/collapse without changing the workspace. Enter activates the database;
-Left/Right arrows control expansion. Shift+F10 opens its context menu.
+Clicking a row or icon selects the explorer entity and toggles branch expansion;
+it never opens a tab, switches the active tab, retargets a draft, or cancels a
+running operation. The chevron only expands/collapses. Each row has an always
+visible right-side **⋯** actions button, including on touch layouts. Choose
+**Open in Tab** to open/reuse that entity's resource or overview workspace.
+Enter/Space selects/toggles a row; the action button opens its menu. Shift+F10 or
+right-click opens the same menu for any entity. Left/Right arrows still control
+tree expansion. Explorer selection and the active workspace are distinct states;
+the breadcrumb and active tab identify the execution target.
+
+Menus are built from extensible action descriptors with applicability checks.
+Available actions currently include Open in Tab, Expand/Collapse for branches,
+and New → Query Console for databases. Tables/collections show a disabled
+**View indexes · planned** entry; it performs no request. Future index/properties/
+export actions can extend this registry without turning row clicks into actions.
+Do not infer backend permissions from menu visibility.
 
 Each console owns its ID, draft, results, request/cancel state, and immutable
 connection/database binding. Database simulations can finish in an inactive tab
@@ -65,7 +78,8 @@ parent paths. All query words must match. Keep matching leaves beneath their
 connection/database/schema ancestors; expand matching paths temporarily and hide
 unrelated branches. Searching a parent also exposes its children. Show no-results
 feedback and Clear; clearing restores earlier expansion state, while retaining
-the path to a newly selected result. Do not query a database on each keystroke.
+the path to a resource explicitly opened from the results. Selecting a result
+alone does not open a workspace. Do not query a database on each keystroke.
 
 The prototype searches its fictional loaded tree. Real lazy-loaded metadata needs
 a separate supported discovery/search contract before promising server-wide
@@ -136,10 +150,10 @@ by the current credentials. Do not add a fake schema level for MongoDB.
 
 - Each branch has a disclosure chevron and visible indentation/guide lines.
   Connection, database, and PostgreSQL schema branches expand independently.
-- Clicking a branch chevron toggles its children without running queries or
-  changing the active result target. A database label opens its overview/New
-  action. A table/collection opens or reuses its data tab. Highlight the resource,
-  or its bound database for a console tab.
+- Clicking rows selects/toggles explorer entities without changing the active
+  tab. The right-side actions menu is the explicit entry to opening a workspace.
+  Explorer selection can differ from the execution context shown in the active
+  tab/breadcrumb. Branch chevrons only expand/collapse.
 - Keep expansion state per node while navigating between resources. Collapsing
   a branch hides only its descendants and leaves the active workspace intact.
 - In the real app, load a branch's metadata on first expansion. Show loading,
@@ -186,6 +200,7 @@ The prototype also offers Kafka/HTTP choices marked **Future design**. Its
 profile** adds fictional resources in memory and discards all credential fields
 when the dialog closes. Reloading removes these profiles. In the actual app,
 Save profile, Test connection, and Save and connect need distinct outcomes.
+Adding a profile does not automatically open a workspace; use its entity menu.
 
 PostgreSQL fields: host, port, database, username, password, TLS mode and supported
 certificate options. MongoDB: URI entry plus optional database override. Explain
@@ -204,13 +219,13 @@ opening a persistent connection. Auth belongs to session/request configuration.
 
 ### 3. Explore PostgreSQL
 
-Select a connected profile, expand database/schema/table, then open a table.
+Expand a connected profile/database/schema, then use a table's ⋯ → Open in Tab.
 Data opens a bounded preview; Structure lists column name, type, nullability,
 default, and key indicators. Data has a filter text field for a SQL WHERE expression
 such as `id > 10 AND name LIKE 'A%'`; Apply/Enter targets only the selected table.
 Empty text clears the filter. Explicit Refresh reloads metadata/completions.
 
-For free SQL, select the database → New → Query Console. The new tab is bound to
+For free SQL, use database ⋯ → New → Query Console. The new tab is bound to
 that database, independent of the current table. Opening another console never
 replaces an existing console draft.
 
@@ -224,7 +239,7 @@ Expand profile/database/collection. Data uses a filter text field such as
 Projection, ordered Sort, and Limit remain planned advanced Find controls; the
 current prototype demonstrates the filter, not those advanced controls.
 
-Database → New → Query Console opens a command-JSON editor, for example
+Database ⋯ → New → Query Console opens a command-JSON editor, for example
 `{ "find": "customers", "filter": {}, "limit": 100 }`. It does not evaluate
 `db.collection.find(...)`, JavaScript, or mongosh scripts. Actual supported
 commands and authorization require a separate backend contract.
@@ -393,7 +408,9 @@ Switching resource/connection discards late responses from the old selection.
 | Right in explorer | Expand branch, or focus its first child if already expanded |
 | Left in explorer | Collapse branch, or focus its parent |
 | Home / End in explorer | Focus first/last visible node |
-| Enter / Space in explorer | Toggle branch or select focused table/collection |
+| Enter / Space in explorer | Select/toggle entity without opening a tab |
+| Enter / Space on entity actions button | Open that entity's action menu |
+| Shift+F10 / context-menu key on entity | Open the same action menu |
 | Escape in explorer search | Clear filter and restore branch expansion |
 | Left / Right on explorer divider | Resize sidebar; Home/End choose bounds |
 
@@ -426,7 +443,8 @@ completion menu or dialog is open. Do not steal ordinary editor typing shortcuts
 13. Search integrations by name/capability, filter categories, recover from no
     matches, and select with the keyboard. A large test catalog must scroll
     inside the picker rather than expand it into an unbounded card grid.
-14. Search the explorer for a resource in a collapsed branch, select it, then
+14. Search the explorer for a resource in a collapsed branch, use its menu to
+    Open in Tab, then
     clear the filter. Its parent path remains visible and unrelated branches
     return to their prior state.
 15. Edit drafts in two resources of each tool and switch between them. Inputs
@@ -439,6 +457,10 @@ completion menu or dialog is open. Do not steal ordinary editor typing shortcuts
     and another database's console. Verify separate drafts/results and captured
     targets. Switch tabs while running, cancel one job, and close a running
     console without affecting another tab or leaking late results.
+18. Click several entities and add a new profile while a query is running. No
+    extra tabs should appear, and the active tab/draft/operation must stay intact.
+    Open tabs through row menus, reuse an existing resource tab, and verify
+    planned index actions are visibly disabled. Repeat using keyboard and touch.
 
 The wireframe demonstrates layout only and does not validate these production
 behaviors. Verify them in Wails once real bindings and database operations exist.

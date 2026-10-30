@@ -40,6 +40,14 @@ text does not become safe through value parameterization. Define supported synta
 single-expression handling, permissions, limits, and timeouts in Go. Collection
 filters remain parsed document objects passed to FindDocuments.
 
+Explorer row selection/expansion must not open tabs or mutate the active execution
+context. Each entity exposes an explicit actions menu. Open in Tab opens/reuses
+its workspace; database New → Query Console creates a unique console. Keep menu
+context captured by entity ID, independent of whichever tab is active. Adding a
+profile only adds explorer nodes. Use extensible action descriptors with supported
+entity kinds/capabilities, disabled reasons, and handlers. Backend authorization
+still applies; disabled planned index actions do not call a backend operation.
+
 PostgreSQL consoles call ExecuteSQL. MongoDB command-JSON consoles need a distinct
 ExecuteMongoCommand contract with an explicit supported/authorized command set;
 never evaluate JavaScript. The current prototype validates object-shaped JSON and

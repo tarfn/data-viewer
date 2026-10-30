@@ -30,8 +30,10 @@ fixtures. The prototype is a design aid and does not implement release features.
 It includes resource search, per-resource window drafts, breadcrumbs, value
 inspection, a resizable explorer, and Kafka copy-to-publish drafts. All tool
 operations still use fictional data and make no network requests.
-Table/collection views use text filters. Select a database → New → Query Console
-to open a separate database-bound editor tab (SQL or MongoDB command JSON).
+Table/collection views use text filters. Row clicks select/expand only; use each
+entity's right-side ⋯ → Open in Tab. Database ⋯ → New → Query Console opens a
+separate database-bound editor tab (SQL or MongoDB command JSON). Entity action
+menus can grow later; index inspection is currently a disabled planned action.
 
 The proposed stack is Go, Wails, React/TypeScript, CodeMirror 6, `pgx`, and the
 official MongoDB Go driver. Kafka and HTTP integrations are future extensions.

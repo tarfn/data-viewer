@@ -36,6 +36,7 @@ integrations small; external installable plugins remain deferred.
 
 Errors and loading states are required. The user subsequently requested
 database-level New → Query Console tabs with separate resource filter fields.
+Use explicit entity menus to open tabs; explorer row clicks only select/expand.
 This replaces the earlier single-editor UI plan. History/session restoration
 remain stretch goals. The prototype also explores MongoDB command-JSON consoles;
 command execution needs its own backend contract beyond the initial Find adapter.

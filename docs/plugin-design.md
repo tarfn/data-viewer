@@ -66,6 +66,15 @@ The application validates requested capabilities on the backend as well as
 hiding unsupported actions in the frontend. An unknown kind or capability returns
 a typed unsupported-operation error.
 
+Entity menus are a separate extensible action registry. An action describes its
+ID, label, supported resource kinds/capabilities, disabled reason, handler, and
+optional children (for example New → Query Console). The prototype supplies
+trusted local handlers; this is not permission to execute manifest-provided JS.
+Row clicks only navigate/select. Opening a tab or invoking an operation requires
+an explicit menu action bound to the captured entity ID. Future index inspection
+can add a capability/action without redesigning the explorer. The current planned
+index item is disabled and makes no request.
+
 ## Catalog and connection setup UI
 
 Add connection uses a searchable list of registered integration descriptors;

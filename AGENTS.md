@@ -32,6 +32,13 @@ the earlier plan to defer all tabs. PostgreSQL consoles use SQL; MongoDB console
 design uses native command JSON, not mongosh JavaScript. All prototype execution
 remains simulated.
 
+The latest explorer interaction is explicit: clicking rows selects/expands only
+and never opens or switches tabs. Every entity has a right-side actions menu;
+Open in Tab opens/reuses its workspace and database New → Query Console creates
+a separate console. Menus use extensible action descriptors. Index inspection is
+a disabled planned action, not an implemented capability. New profiles do not
+automatically open tabs.
+
 The documentation prototype also explores Kafka/HTTP forms and workspaces at the
 user's request. These are future UI designs, not shipped integrations or added
 0.0.1 backend requirements. Research evidence and limitations are recorded in
