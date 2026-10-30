@@ -2,7 +2,7 @@
 
 ## Project status and scope
 
-Data Viewer is a planning-stage desktop workspace inspired by DataGrip. Its
+Data Viewer is an early desktop workspace inspired by DataGrip. Its
 long-term purpose is to connect several kinds of data/developer tools in one
 application: databases first, then potentially Kafka and HTTP. It is a personal
 learning project, not an attempt to match all DataGrip features in one release.
@@ -20,8 +20,11 @@ cancellation, safe credential handling, and clear errors are part of that target
 PostgreSQL has declared schemas; MongoDB fields are sampled observations and
 must not be presented as a guaranteed collection schema.
 
-The proposed stack is Go + Wails + React/TypeScript, CodeMirror 6, pgx, and the
-official MongoDB Go driver. Required scope and acceptance checks are in
+The initialized stack is Go + Wails v2.17.0 + React/TypeScript and CodeMirror 6.
+The Go backend currently exposes only App.Info; database adapters, profile
+persistence, and real connection/request APIs are not implemented. PostgreSQL pgx
+and the official MongoDB Go driver remain planned. The React UI uses abortable
+local simulations and fixed typed fixtures for all tools. Required scope and acceptance checks are in
 [features](docs/features.md) and [the release plan](docs/release-0.0.1-plan.md).
 Kafka/HTTP, record editing, arbitrary mongosh scripts, advanced SQL parsing,
 external installable plugins, and credential persistence are deferred. Persistent
@@ -88,9 +91,13 @@ or connection strings containing credentials.
 
 ## Validation
 
-There is currently no application, Go module, or test suite. For documentation,
-check relative links, code fences, and `git diff --check`. Do not claim Go tests
-or UI checks passed when no implementation exists.
+Use [development setup](docs/development.md) for verified commands and source
+ownership. Build frontend assets before Go checks because main.go embeds dist.
+Run frontend typecheck, Vitest, production build, and the relevant Playwright
+flows for UI behavior. Run go vet/test with the bindings tag for bridge-only
+checks, and a native Wails build for actual desktop linkage. There are currently
+no Go tests; a no-test compile is not a database integration check. For docs,
+check relative links, code fences, and `git diff --check`.
 
 Once Go packages exist, run relevant tests; use integration tests for actual
 driver behavior and the race detector when shared lifecycle state changes.

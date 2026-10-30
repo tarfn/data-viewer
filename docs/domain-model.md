@@ -1,9 +1,14 @@
 # Domain model and workspace state
 
 This is the proposed production model behind the [current UI](ui-ux-guide.md),
-not code already present in the repository. Start with the PostgreSQL slice and
+not the completed Go services. The React preview now implements window-only
+profiles, structured targets, tabs/drafts, and abortable mock runs using types in
+`frontend/src/types.ts`; it has no real sessions or persistent profile store.
+Start backend work with the PostgreSQL slice and
 add the other types when their behavior is implemented. The HTML prototype uses
 simplified fixture IDs and window memory; it does not implement these services.
+See [the source map](development.md#source-map-and-next-backend-work) for current
+implementation boundaries.
 
 ## Identities and ownership
 

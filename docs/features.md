@@ -1,7 +1,8 @@
 # Feature inventory
 
-All production entries below are planned; none is currently implemented. The
-documentation prototype illustrates some interactions using fictional data.
+The Go/Wails shell and React UI preview are initialized; database/tool backend
+features below remain planned. The React preview and HTML design prototype use
+fictional data. UI interactions do not imply real connectivity or persistence.
 IDs let backend
 work, frontend work, tests, and PRs refer to the same behavior. Required means
 needed for release 0.0.1; stretch means cut it before moving the release date.
@@ -44,6 +45,13 @@ needed for release 0.0.1; stretch means cut it before moving the release date.
 The initial UI presents data browsing without inline editing. User SQL can still
 write if the database account permits it; do not label the application universally
 read-only. Prefer read-only sample credentials during development.
+
+Current React coverage: UI-CON-01, UI-NAV-01, UI-ACT-01, WS-01/03, UI-DRAFT-01,
+UI-DATA-01, and UI-LAYOUT-01 interactions are implemented with mock services.
+Profile forms/editing and database/Kafka/HTTP workspaces are present; execution,
+metadata, credentials, timeouts, and persistence have no real Go adapter yet.
+CodeMirror uses static fixture suggestions, not backend metadata autocomplete.
+Use [development setup](development.md) for actual checks and limitations.
 
 See [UX](ui-ux-guide.md), [backend/frontend handoff](frontend-handoff.md), and
 [plugin design](plugin-design.md) for implementation boundaries. The

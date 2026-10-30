@@ -90,6 +90,8 @@ detector for shared lifecycle changes. Frontend: check types, bindings, and the
 affected keyboard/state flows. Desktop lifecycle/build changes: test a packaged
 application on a supported OS.
 
-The repository currently has no application test runner. Report this limitation;
-do not describe planned checks as passing. A review is advice, not authorization
-to merge or publish.
+The repository now has Vitest and Playwright UI checks and a minimal Go/Wails
+shell; see [development setup](development.md). Go database tests and real-service
+integration checks do not exist yet. Do not describe simulated UI operations or a
+no-test Go compile as passing database checks. A review is advice, not
+authorization to merge or publish.

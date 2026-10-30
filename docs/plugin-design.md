@@ -3,7 +3,9 @@
 ## Scope and terminology
 
 A plugin here means a database/tool integration, not a Codex plugin. In 0.0.1,
-PostgreSQL and MongoDB are built-in Go adapters compiled into the application.
+PostgreSQL and MongoDB will be built-in Go adapters compiled into the application.
+Currently the initialized shell has a frontend catalog and mock workspaces only;
+neither database driver nor an adapter implementation is present.
 There is no plugin download, marketplace, runtime loading, or extension API yet.
 This keeps the beginner implementation small while giving new integrations a
 clear place to live.

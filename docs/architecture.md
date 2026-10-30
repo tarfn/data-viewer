@@ -1,7 +1,11 @@
 # Architecture and feature design
 
-This is a proposed design, not an implemented API. Keep the first implementation
-small and adjust contracts as actual database behavior becomes clear.
+The Go/Wails shell, React UI, and CodeMirror editor are initialized; see
+[development setup](development.md) for the working source map and commands.
+The backend architecture below is the planned direction: `App.Info` is the only
+implemented Go bridge method. All UI tool operations still use local simulations.
+Keep the first database implementation small and adjust contracts as actual
+driver behavior becomes clear.
 The [domain model](domain-model.md) defines the identities and state transitions
 behind the latest UI; the [implementation guide](implementation-guide.md) turns
 them into small backend-first steps.
@@ -18,9 +22,10 @@ them into small backend-first steps.
 | MongoDB | Official MongoDB Go driver | Connections, BSON, collection operations |
 | Profile storage | JSON in OS application config directory | Non-secret connection settings |
 
-Select supported versions and commit generated manifests/lockfiles during
-implementation. Verify Wails prerequisites for the chosen desktop OS before
-building the UI. No versions or dependencies are installed by this document.
+Current pins live in `go.mod` and `frontend/package.json` with committed checksum
+and lock files. Wails v2.17.0 is initialized; pgx and the MongoDB driver are not
+added yet. Verify platform prerequisites before native development. The layout
+below remains a backend growth plan; unused internal packages are not scaffolded.
 
 ## Component boundaries
 
