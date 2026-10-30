@@ -19,11 +19,33 @@
     h2 { font-size: 18px; margin: 0 0 4px; }
     .muted { color: #53657a; }
     .badge { color: #176344; background: #e3f4ec; border-radius: 20px; padding: 4px 10px; font-size: 12px; white-space: nowrap; }
-    .layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: calc(100vh - 145px); }
+    .layout { display: grid; grid-template-columns: var(--sidebar-width, 300px) 8px minmax(0, 1fr); min-height: calc(100vh - 145px); }
     aside { background: #f7f9fc; border-right: 1px solid #d8e0ea; padding: 24px 12px; min-width: 0; }
     .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #53657a; }
     .explorer-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .explorer-head button { font-size: 12px; padding: 6px 8px; }
+    .explorer-search { margin-top: 18px; }
+    .explorer-search label { font-size: 12px; color: #53657a; }
+    .explorer-search .inline { flex-wrap: nowrap; }
+    .search-hidden { display: none !important; }
+    .splitter { cursor: col-resize; background: #e6ecf3; display: flex; align-items: center; justify-content: center; touch-action: none; }
+    .splitter::after { content: ''; width: 2px; height: 36px; border-radius: 3px; background: #9aaec6; }
+    .splitter:hover, .splitter:focus-visible { background: #d3e2fb; }
+    .breadcrumb { padding: 0; margin: 0 0 14px; display: flex; gap: 8px; flex-wrap: wrap; list-style: none; color: #53657a; font-size: 12px; }
+    .breadcrumb li { overflow-wrap: anywhere; }
+    .breadcrumb li + li::before { content: '/'; color: #91a0b2; margin-right: 8px; }
+    .breadcrumb [aria-current] { color: #2457c5; font-weight: 600; }
+    .workspace-state { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: -8px 0 20px; }
+    .draft-label { font-size: 12px; color: #53657a; }
+    #query { min-height: 190px; max-height: 70vh; }
+    .cell-value { padding: 3px 6px; margin: -3px -6px; border: 0; background: transparent; text-align: left; color: inherit; }
+    .cell-value:hover { background: #e3edff; }
+    .null-value { font-style: italic; color: #53657a; }
+    .payload-open { margin: 0 16px 16px; }
+    #value-drawer { position: fixed; inset: 0 0 0 auto; margin: 0; width: min(480px, calc(100% - 16px)); height: 100dvh; max-height: 100dvh; border-radius: 12px 0 0 12px; }
+    #detail-value { min-height: 340px; margin-top: 16px; color: #213047; }
+    #detail-source { overflow-wrap: anywhere; }
+    .screen-reader-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
     .tree, .tree ul { list-style: none; margin: 0; padding: 0; }
     .tree { margin-top: 16px; }
     .tree ul { margin-left: 16px; border-left: 1px solid #d8e0ea; padding-left: 4px; }
@@ -94,7 +116,7 @@
     .empty { padding: 24px; color: #53657a; }
     footer { padding: 12px 24px; border-top: 1px solid #d8e0ea; background: white; color: #53657a; }
     [hidden] { display: none !important; }
-    @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } aside { border-right: 0; border-bottom: 1px solid #d8e0ea; padding: 12px 16px; max-height: 320px; overflow-y: auto; } main { padding: 16px; } header { flex-wrap: wrap; } }
+    @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } .splitter { display: none; } aside { border-right: 0; border-bottom: 1px solid #d8e0ea; padding: 12px 16px; max-height: 380px; overflow-y: auto; } main { padding: 16px; } header { flex-wrap: wrap; } .heading { flex-wrap: wrap; } }
     @media (max-width: 520px) { .catalog-controls, .fields { grid-template-columns: 1fr; } .integration-option strong { flex-wrap: wrap; overflow-wrap: anywhere; } }
   </style>
 </head>
@@ -105,27 +127,34 @@
     <span class="badge">Demo mode · no live connection</span>
   </header>
   <div class="layout">
-    <aside aria-label="Database explorer">
+    <aside aria-label="Database explorer" id="explorer">
       <div class="explorer-head"><div class="eyebrow">Connections</div><button id="add-connection">+ Add connection</button></div>
+      <div class="explorer-search"><label for="explorer-search">Find a resource</label><div class="inline"><input id="explorer-search" type="search" placeholder="Table, collection, topic…" autocomplete="off"><button id="clear-explorer" aria-label="Clear explorer search">Clear</button></div></div>
+      <p id="explorer-search-status" class="screen-reader-only" role="status" aria-live="polite"></p>
       <ul class="tree" role="tree" aria-label="Connections and database resources" id="tree"></ul>
+      <p id="explorer-empty" class="muted" hidden>No matching resources. Try a different name or clear the search.</p>
       <p class="muted">Expand a profile, then select a table, collection, topic, or request. Arrow keys navigate the tree.</p>
+      <p class="draft-label">Drafts stay in this window. Reload clears them. Password/token inputs and HTTP headers reset on navigation.</p>
     </aside>
-    <main>
+    <div id="sidebar-resize" class="splitter" role="separator" aria-label="Resize explorer" aria-orientation="vertical" aria-controls="explorer workspace" aria-valuemin="260" aria-valuemax="440" aria-valuenow="300" tabindex="0" title="Drag or use Left/Right arrows to resize; double-click to reset"></div>
+    <main id="workspace">
+      <nav aria-label="Active resource"><ol class="breadcrumb" id="breadcrumbs"></ol></nav>
       <div class="heading"><div><h2 id="resource">public.users</h2><div class="muted" id="target">Local PostgreSQL / appdb</div></div><span class="eyebrow" id="workspace-purpose">Query and inspect</span></div>
+      <div class="workspace-state"><span class="badge">Demo · no live connection</span><span class="draft-label" id="draft-status">Window draft · not saved to disk</span></div>
       <div class="switcher" id="database-views" role="group" aria-label="Workspace view">
         <button id="query-view" aria-pressed="true">SQL workspace</button>
         <button id="structure-view" aria-pressed="false">Structure</button>
       </div>
       <section id="query-panel" aria-label="Query workspace">
         <div class="card">
-          <div class="card-head"><strong id="editor-title">SQL editor</strong><span class="muted">Ctrl/Cmd+Enter to simulate Run</span></div>
+          <div class="card-head"><strong id="editor-title">SQL editor</strong><span class="muted">Ctrl/Cmd+Enter · drag editor corner to resize</span></div>
           <div class="editor"><label id="input-label" for="query">Statement</label><textarea id="query" spellcheck="false">SELECT id, name, email FROM public.users;</textarea></div>
           <div class="toolbar"><button class="primary" id="run">Simulate Run</button><button id="cancel" disabled>Cancel</button><span class="muted">Preview: 100 · timeout: 30s (proposed defaults)</span></div>
         </div>
         <div class="card">
           <div class="card-head"><strong>Results</strong><span id="result-status" role="status" aria-live="polite">Sample output</span></div>
           <div id="results"></div>
-          <p class="hint">Run simulates a request and shows fixed sample data; edited text is not evaluated.</p>
+          <p class="hint">Select a value to inspect its type and full contents. Run shows fixed sample data; edited text is not evaluated.</p>
         </div>
       </section>
       <section class="card" id="structure-panel" aria-label="Resource structure" hidden>
@@ -187,7 +216,7 @@
           <p class="hint" id="http-final-url">Target: https://api.example.test/health</p>
         </div>
         <div class="card">
-          <div class="card-head"><strong>Response</strong><span id="http-state" role="status" aria-live="polite">Not sent</span></div>
+          <div class="card-head"><strong>Response</strong><span id="http-state" role="status" aria-live="polite">Not sent</span><button id="inspect-http-response" disabled>Inspect response</button></div>
           <div class="subnav" role="group" aria-label="Response view"><button data-response-tab="body" aria-pressed="true">Body</button><button data-response-tab="headers" aria-pressed="false">Headers</button></div>
           <pre id="http-response">Send a simulated request to see an example response.</pre>
           <pre id="http-response-headers" hidden>No response headers yet.</pre>
@@ -219,6 +248,13 @@
       </form>
     </div>
   </dialog>
+  <dialog id="value-drawer" aria-labelledby="detail-title" aria-describedby="detail-source">
+    <div class="dialog-head"><h2 id="detail-title">Value details</h2><button id="close-detail" aria-label="Close value details">✕</button></div>
+    <p id="detail-source" class="muted"></p><span id="detail-type" class="badge"></span>
+    <label class="screen-reader-only" for="detail-value">Full value</label><textarea id="detail-value" readonly spellcheck="false"></textarea>
+    <div class="dialog-actions"><button id="detail-copy">Copy value</button><button id="detail-to-publish" hidden>Use as publish draft</button><button id="detail-done">Done</button></div>
+    <p id="detail-copy-state" role="status" aria-live="polite"></p>
+  </dialog>
   <footer id="status" role="status" aria-live="polite">Ready · select a sample profile, switch views, or simulate Run/Cancel.</footer>
   <script>
     const $ = id => document.getElementById(id);
@@ -232,6 +268,18 @@
     let profileSequence = 0;
     let dialogOpener = null;
     let selectedIntegration = null;
+    let workspaceLoaded = false;
+    let searchExpansion = null;
+    let selectionBeforeSearch = null;
+    let detailOpener = null;
+    let detailTransfer = null;
+    let httpResultTarget = '';
+    const drafts = new Map();
+    const draftFields = {
+      postgres: ['query'], mongo: ['query'],
+      kafka: ['kafka-partition', 'kafka-start', 'kafka-offset', 'kafka-limit', 'kafka-duration', 'publish-partition', 'publish-format', 'produce-key', 'publish-headers', 'produce-value'],
+      http: ['http-method', 'http-url', 'http-params', 'http-auth', 'http-body']
+    };
     // Original local pictograms. Descriptor keys select trusted SVGs, never remote markup.
     const iconPaths = {
       database: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
@@ -321,6 +369,123 @@
     function activeSample() {
       return { ...samples[kind], ...resources[selectedResource] };
     }
+    function resourcePath(item) {
+      const path = [];
+      while (item && item.getAttribute('role') === 'treeitem') {
+        path.unshift(item.querySelector(':scope > .tree-row .tree-label').textContent);
+        item = item.parentElement.closest('[role="treeitem"]');
+      }
+      return path;
+    }
+    function revealResource(id) {
+      let parent = $(id)?.parentElement.closest('[role="treeitem"]');
+      while (parent) { toggle(parent, true); parent = parent.parentElement.closest('[role="treeitem"]'); }
+    }
+    function filterExplorer() {
+      const query = $('explorer-search').value.trim().toLowerCase();
+      const nodes = [...$('tree').querySelectorAll('[role="treeitem"]')];
+      if (query && searchExpansion === null) {
+        searchExpansion = new Map(nodes.filter(node => node.hasAttribute('aria-expanded')).map(node => [node.id, node.getAttribute('aria-expanded') === 'true']));
+        selectionBeforeSearch = selectedResource;
+      }
+      if (!query) {
+        nodes.forEach(node => node.classList.remove('search-hidden'));
+        if (searchExpansion) {
+          for (const [id, expanded] of searchExpansion) if ($(id)) toggle($(id), expanded);
+          if (selectionBeforeSearch !== selectedResource) revealResource(selectedResource);
+        }
+        searchExpansion = null;
+        $('explorer-empty').hidden = true;
+        $('explorer-search-status').textContent = '';
+      } else {
+        const terms = query.split(/\s+/);
+        let matches = 0;
+        function visit(item) {
+          const text = (resourcePath(item).join(' ') + ' ' + item.querySelector(':scope > .tree-row .tree-kind').textContent).toLowerCase();
+          const ownMatch = terms.every(term => text.includes(term));
+          const group = item.querySelector(':scope > [role="group"]');
+          const childMatches = group ? [...group.children].map(visit).some(Boolean) : false;
+          const visible = ownMatch || childMatches;
+          item.classList.toggle('search-hidden', !visible);
+          if (group && visible) toggle(item, true);
+          if (!group && ownMatch) matches++;
+          return visible;
+        }
+        [...$('tree').children].forEach(visit);
+        $('explorer-empty').hidden = matches > 0;
+        $('explorer-search-status').textContent = matches + ' matching resources';
+      }
+      const visible = nodes.filter(node => !node.closest('[hidden], .search-hidden'));
+      const preferred = visible.find(node => node.id === selectedResource) || visible[0];
+      nodes.forEach(node => { node.tabIndex = node === preferred ? 0 : -1; });
+    }
+    function clearExplorer() { $('explorer-search').value = ''; filterExplorer(); }
+    function saveDraft() {
+      if (!workspaceLoaded) return;
+      const values = Object.fromEntries(draftFields[kind].map(id => [id, $(id).value]));
+      // Dedicated credential fields and potentially secret-bearing HTTP headers are excluded.
+      const state = { values, structure: !$('structure-panel').hidden, publish: !$('kafka-publish-panel').hidden,
+        requestTab: document.querySelector('[data-request-tab][aria-pressed="true"]').dataset.requestTab };
+      drafts.set(selectedResource, state);
+    }
+    function finishSelection() {
+      const draft = drafts.get(selectedResource);
+      if (draft) {
+        for (const [id, value] of Object.entries(draft.values)) $(id).value = value;
+        if (kind === 'postgres' || kind === 'mongo') view(draft.structure);
+        if (kind === 'kafka') kafkaView(draft.publish);
+        if (kind === 'http') document.querySelector('[data-request-tab="' + draft.requestTab + '"]').click();
+      }
+      if (kind === 'http') {
+        $('http-token-field').hidden = $('http-auth').value !== 'bearer'; updateHTTP();
+      }
+      if (kind === 'kafka') {
+        kafkaPosition(); $('publish-value-label').textContent = $('publish-format').value === 'json' ? 'JSON payload' : 'Text payload';
+      }
+      $('breadcrumbs').replaceChildren();
+      const path = resourcePath($(selectedResource));
+      path.forEach((name, index) => {
+        const item = document.createElement('li'); item.textContent = name;
+        if (index === path.length - 1) item.setAttribute('aria-current', 'page');
+        $('breadcrumbs').append(item);
+      });
+      $('draft-status').textContent = draft ? 'Draft restored · this window only' : 'Window draft · not saved to disk';
+      workspaceLoaded = true;
+    }
+    function openDetail({ title, type, value, source, message }) {
+      detailOpener = document.activeElement;
+      $('detail-title').textContent = title;
+      $('detail-type').textContent = type;
+      $('detail-source').textContent = source || resourcePath($(selectedResource)).join(' / ');
+      $('detail-value').value = value;
+      $('detail-copy-state').textContent = '';
+      detailTransfer = message ? { resource: selectedResource, message } : null;
+      $('detail-to-publish').hidden = !message;
+      $('value-drawer').showModal(); $('detail-value').focus();
+    }
+    function enhanceResults() {
+      if (kind === 'postgres') {
+        const headers = [...$('results').querySelectorAll('th')].map(header => header.textContent);
+        $('results').querySelectorAll('tbody tr').forEach((row, rowIndex) => {
+          [...row.cells].forEach((cell, column) => {
+            const isNull = !!cell.querySelector('em');
+            const value = cell.textContent;
+            const button = document.createElement('button'); button.className = 'cell-value';
+            button.textContent = value || '(empty string)';
+            if (isNull) button.classList.add('null-value');
+            button.setAttribute('aria-label', 'Inspect ' + headers[column] + ', row ' + (rowIndex + 1));
+            button.addEventListener('click', () => openDetail({ title: headers[column].split('·')[0].trim() + ' · row ' + (rowIndex + 1),
+              type: isNull ? 'NULL' : headers[column].split('·')[1]?.trim() || 'text', value: isNull ? 'NULL' : value }));
+            cell.replaceChildren(button);
+          });
+        });
+      } else if (kind === 'mongo') {
+        const documentText = $('results').querySelector('pre')?.textContent || '';
+        const button = document.createElement('button'); button.className = 'payload-open'; button.textContent = 'Inspect document';
+        button.addEventListener('click', () => openDetail({ title: 'Document details', type: 'MongoDB Extended JSON', value: documentText }));
+        $('results').append(button);
+      }
+    }
     function buildTree(nodes, parent) {
       for (const node of nodes) {
         const item = document.createElement('li');
@@ -372,6 +537,7 @@
       $('produce-button').disabled = false; $('publish-cancel').disabled = true;
     }
     function select(resourceId) {
+      saveDraft(); workspaceLoaded = false;
       stop(); selectedResource = resourceId; kind = resources[resourceId].kind;
       const sample = activeSample();
       $('tree').querySelectorAll('[role="treeitem"]').forEach(node => {
@@ -388,7 +554,11 @@
       $('kafka-panel').hidden = kind !== 'kafka';
       $('http-panel').hidden = kind !== 'http';
       $('http-token').value = '';
+      $('inspect-http-response').disabled = true; httpResultTarget = '';
       if (kind === 'kafka') {
+        $('kafka-publish-form').reset();
+        const defaults = { 'kafka-partition': 'all', 'kafka-start': 'latest', 'kafka-offset': '0', 'kafka-limit': '100', 'kafka-duration': '30' };
+        for (const [id, value] of Object.entries(defaults)) $(id).value = value;
         kafkaView(false);
         $('kafka-messages').replaceChildren(); $('kafka-empty').hidden = false;
         $('kafka-state').textContent = 'Idle · topic selected';
@@ -400,12 +570,15 @@
       if (kind === 'http') {
         $('http-method').value = sample.method; $('http-url').value = sample.url;
         $('http-params').value = ''; $('http-auth').value = 'none';
+        $('http-headers').value = 'Accept: application/json';
+        $('http-body').value = '{ "item": "sample", "quantity": 1 }';
         $('http-token-field').hidden = true;
         $('http-response').textContent = 'Send a simulated request to see an example response.';
         $('http-response-headers').textContent = 'No response headers yet.';
         $('http-state').textContent = 'Not sent'; updateHTTP();
       }
       if (!database) {
+        finishSelection();
         $('status').textContent = sample.target + ' · future design · no live connection.';
         return;
       }
@@ -418,9 +591,11 @@
       $('query').value = sample.query;
       // These fragments are fixed fictional constants, never database/user content.
       $('results').innerHTML = sample.results;
+      enhanceResults();
       $('structure').innerHTML = sample.structure;
       $('result-status').textContent = 'Sample output';
       $('status').textContent = 'Demo profile selected: ' + sample.target + '. No live connection.';
+      finishSelection();
     }
     function view(structure) {
       if (kind !== 'postgres' && kind !== 'mongo') return;
@@ -430,12 +605,12 @@
       $('structure-view').setAttribute('aria-pressed', String(structure));
     }
     function run() {
-      if (timer !== null || $('query-panel').hidden || $('connection-dialog').open) return;
+      if (timer !== null || $('query-panel').hidden || $('connection-dialog').open || $('value-drawer').open) return;
       $('run').disabled = true; $('cancel').disabled = false;
       $('result-status').textContent = 'Previous sample · simulation running';
       $('status').textContent = 'Simulating a request. Cancel is available.';
       timer = setTimeout(() => {
-        stop(); $('results').innerHTML = activeSample().results;
+        stop(); $('results').innerHTML = activeSample().results; enhanceResults();
         $('result-status').textContent = kind === 'postgres' ? '2 sample rows' : '1 sample document';
         $('status').textContent = 'Simulation complete. No query was sent to a database.';
       }, 1200);
@@ -593,7 +768,7 @@
       }
       cloneNodes(root); buildTree([root], $('tree'));
       // Only non-secret labels and fixture identities were copied; credentials are discarded.
-      closeConnection(); select(firstLeaf);
+      clearExplorer(); closeConnection(); select(firstLeaf);
       $('status').textContent = 'Added demo profile: ' + name + '. Sample resources only; no live connection.';
     });
     function kafkaPosition() {
@@ -627,7 +802,11 @@
             if (column === 1) {
               const button = document.createElement('button'); button.textContent = value;
               button.setAttribute('aria-label', 'Inspect partition ' + message.partition + ' offset ' + value);
-              button.addEventListener('click', () => { $('kafka-detail').textContent = JSON.stringify(message, null, 2); });
+              button.addEventListener('click', () => {
+                $('kafka-detail').textContent = JSON.stringify(message, null, 2);
+                openDetail({ title: 'Kafka message', type: 'Partition ' + message.partition + ' · offset ' + message.offset,
+                  value: JSON.stringify(message, null, 2), message });
+              });
               cell.append(button);
             } else cell.textContent = value;
             row.append(cell);
@@ -738,19 +917,88 @@
       const method = $('http-method').value;
       $('http-send').disabled = true; $('http-cancel').disabled = false;
       $('http-state').textContent = 'Sending simulation…';
+      $('inspect-http-response').disabled = true;
       $('http-response').textContent = 'Waiting for simulated response…';
       httpTimer = setTimeout(() => {
         httpTimer = null; $('http-send').disabled = false; $('http-cancel').disabled = true;
         $('http-state').textContent = '200 OK · simulated · no network request';
         $('http-response').textContent = JSON.stringify({ demo: true, method, url: target, message: 'Fictional response. No credentials or body were transmitted.' }, null, 2);
         $('http-response-headers').textContent = 'content-type: application/json\nx-demo: true';
+        httpResultTarget = method + ' ' + target; $('inspect-http-response').disabled = false;
       }, 700);
     });
     $('http-cancel').addEventListener('click', () => {
       clearTimeout(httpTimer); httpTimer = null;
       $('http-send').disabled = false; $('http-cancel').disabled = true;
       $('http-state').textContent = 'Canceled · no network request';
+      $('inspect-http-response').disabled = true;
       $('http-response').textContent = 'Simulation canceled before completion.'; $('http-send').focus();
+    });
+    $('inspect-http-response').addEventListener('click', () => {
+      const body = !$('http-response').hidden;
+      openDetail({ title: body ? 'HTTP response body' : 'HTTP response headers', type: 'Simulated HTTP response',
+        source: httpResultTarget, value: body ? $('http-response').textContent : $('http-response-headers').textContent });
+    });
+    function closeDetail() { $('value-drawer').close(); }
+    $('close-detail').addEventListener('click', closeDetail);
+    $('detail-done').addEventListener('click', closeDetail);
+    $('value-drawer').addEventListener('close', () => {
+      detailTransfer = null;
+      if (detailOpener?.isConnected && !detailOpener.closest('[hidden], .search-hidden')) detailOpener.focus();
+      else (kind === 'kafka' ? $('produce-button') : $('add-connection')).focus();
+    });
+    $('detail-copy').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText($('detail-value').value);
+        $('detail-copy-state').textContent = 'Copied to clipboard.';
+      } catch {
+        $('detail-value').focus(); $('detail-value').select();
+        $('detail-copy-state').textContent = 'Select and copy with Ctrl/Cmd+C; clipboard access is unavailable here.';
+      }
+    });
+    $('detail-to-publish').addEventListener('click', () => {
+      if (!detailTransfer || detailTransfer.resource !== selectedResource) return;
+      const message = detailTransfer.message;
+      $('produce-key').value = message.key;
+      $('produce-value').value = JSON.stringify(message.value, null, 2);
+      $('publish-format').value = 'json'; $('publish-value-label').textContent = 'JSON payload';
+      $('publish-partition').value = 'auto';
+      $('publish-headers').value = JSON.stringify(Object.entries(message.headers).map(([key, value]) => ({ key, value })), null, 2);
+      kafkaView(true); saveDraft(); closeDetail();
+      $('produce-state').textContent = 'Message copied to draft · not published';
+    });
+    $('explorer-search').addEventListener('input', filterExplorer);
+    $('clear-explorer').addEventListener('click', () => { clearExplorer(); $('explorer-search').focus(); });
+    $('explorer-search').addEventListener('keydown', event => {
+      if (event.key === 'Escape') { event.preventDefault(); clearExplorer(); }
+      if (event.key === 'ArrowDown') {
+        const first = [...$('tree').querySelectorAll('[role="treeitem"]')].find(node => !node.closest('[hidden], .search-hidden'));
+        if (first) { event.preventDefault(); focusItem(first); }
+      }
+    });
+    $('workspace').addEventListener('input', event => {
+      if (!event.target.matches('input, textarea, select') || ['http-token', 'http-headers'].includes(event.target.id)) return;
+      saveDraft(); $('draft-status').textContent = 'Draft kept in this window · not saved to disk';
+    });
+    function resizeSidebar(width) {
+      const clamped = Math.max(260, Math.min(440, Math.round(width)));
+      document.documentElement.style.setProperty('--sidebar-width', clamped + 'px');
+      $('sidebar-resize').setAttribute('aria-valuenow', String(clamped));
+    }
+    let resizing = false;
+    $('sidebar-resize').addEventListener('pointerdown', event => {
+      event.preventDefault(); resizing = true; event.currentTarget.setPointerCapture(event.pointerId);
+    });
+    $('sidebar-resize').addEventListener('pointermove', event => {
+      if (resizing) resizeSidebar(event.clientX - document.querySelector('.layout').getBoundingClientRect().left);
+    });
+    $('sidebar-resize').addEventListener('pointerup', () => { resizing = false; });
+    $('sidebar-resize').addEventListener('lostpointercapture', () => { resizing = false; });
+    $('sidebar-resize').addEventListener('dblclick', () => resizeSidebar(300));
+    $('sidebar-resize').addEventListener('keydown', event => {
+      const width = Number(event.currentTarget.getAttribute('aria-valuenow'));
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault(); resizeSidebar(event.key === 'Home' ? 260 : event.key === 'End' ? 440 : width + (event.key === 'ArrowRight' ? 16 : -16));
     });
     buildTree(hierarchy, $('tree'));
     $('tree').addEventListener('click', event => {
@@ -761,7 +1009,7 @@
     $('tree').addEventListener('keydown', event => {
       const item = event.target.closest('[role="treeitem"]');
       if (!item) return;
-      const visible = [...$('tree').querySelectorAll('[role="treeitem"]')].filter(node => !node.closest('[hidden]'));
+      const visible = [...$('tree').querySelectorAll('[role="treeitem"]')].filter(node => !node.closest('[hidden], .search-hidden'));
       const index = visible.indexOf(item);
       let destination;
       switch (event.key) {
@@ -771,7 +1019,7 @@
         case 'End': destination = visible[visible.length - 1]; break;
         case 'ArrowRight':
           if (item.getAttribute('aria-expanded') === 'false') toggle(item, true);
-          else if (item.hasAttribute('aria-expanded')) destination = item.querySelector('[role="treeitem"]');
+          else if (item.hasAttribute('aria-expanded')) destination = [...item.querySelectorAll('[role="treeitem"]')].find(node => !node.closest('[hidden], .search-hidden'));
           break;
         case 'ArrowLeft':
           if (item.getAttribute('aria-expanded') === 'true') toggle(item, false);
@@ -791,7 +1039,7 @@
       $('run').focus();
     });
     document.addEventListener('keydown', event => {
-      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !$('connection-dialog').open) {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !$('connection-dialog').open && !$('value-drawer').open) {
         event.preventDefault();
         if (kind === 'kafka' && !$('kafka-publish-panel').hidden) {
           if (!$('produce-button').disabled) $('kafka-publish-form').requestSubmit();

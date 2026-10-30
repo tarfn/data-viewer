@@ -40,6 +40,59 @@ Use one active workspace initially. Data/Structure/SQL are views of the selected
 resource, not the stretch feature of multiple independently open editor tabs.
 MongoDB replaces SQL with Find and Structure with Sampled fields.
 
+### Resource search and workspace context
+
+The explorer's **Find a resource** searches loaded resource names, kinds, and
+parent paths. All query words must match. Keep matching leaves beneath their
+connection/database/schema ancestors; expand matching paths temporarily and hide
+unrelated branches. Searching a parent also exposes its children. Show no-results
+feedback and Clear; clearing restores earlier expansion state, while retaining
+the path to a newly selected result. Do not query a database on each keystroke.
+
+The prototype searches its fictional loaded tree. Real lazy-loaded metadata needs
+a separate supported discovery/search contract before promising server-wide
+search. Arrow navigation skips hidden results. Escape clears the explorer query.
+
+Show the full active resource breadcrumb above the workspace, alongside the
+profile label and an explicit demo/disconnected/live state. Changing a branch's
+expansion never changes this execution context.
+
+### Per-resource drafts and resizing
+
+Keep editor inputs separately per full resource identity in the current window:
+SQL/Find text, Kafka consume settings/publish payloads, and HTTP request fields.
+Returning to a resource restores its own draft and view rather than inheriting
+the last tool's inputs. Restoring a draft never starts execution or restores a
+previous in-flight operation. This is single-workspace draft retention, not the
+stretch feature of multiple independently running tabs.
+
+The prototype stores drafts only in JavaScript memory; reload clears them.
+Dedicated password/token inputs and HTTP header text are excluded and reset on
+navigation. Other editor text may contain sensitive user content and must never
+be logged or persisted implicitly. Persistent draft storage remains deferred.
+
+Drag the divider to resize the desktop explorer (260–440 px); Left/Right arrows
+adjust its width, Home/End choose bounds, and double-click resets to 300 px.
+The SQL/Find textarea has a native vertical resize handle. Layout sizes are not
+saved. Narrow layouts stack the explorer and hide the desktop divider.
+
+### Result detail drawer
+
+Make SQL values keyboard-accessible inspection buttons. The drawer displays full
+value, database type, and source path, distinguishing NULL from empty text. MongoDB
+document inspection preserves its Extended JSON representation. Kafka message
+inspection includes key/value, headers, partition/offset; HTTP inspection uses
+the completed response's captured target, even if the request draft is edited.
+
+The drawer is a modal panel on the right: move focus inside it, close with Done,
+Close, or Escape, and restore focus when practical. Copy uses the clipboard API
+on explicit action, falling back to selecting text for Ctrl/Cmd+C when unavailable.
+Opening or copying data never executes an operation.
+
+For a Kafka message, **Use as publish draft** copies key, headers, and payload to
+the selected topic's Publish editor. It does not publish. The user must explicitly
+invoke Publish and receive a separate acknowledgement.
+
 ### Explorer hierarchy and expansion
 
 The sidebar is one nested resource tree, similar to DataGrip or Robo 3T. Children
@@ -310,6 +363,8 @@ Switching resource/connection discards late responses from the old selection.
 | Left in explorer | Collapse branch, or focus its parent |
 | Home / End in explorer | Focus first/last visible node |
 | Enter / Space in explorer | Toggle branch or select focused table/collection |
+| Escape in explorer search | Clear filter and restore branch expansion |
+| Left / Right on explorer divider | Resize sidebar; Home/End choose bounds |
 
 Cancel must have a reachable button; do not overload Escape while an editor
 completion menu or dialog is open. Do not steal ordinary editor typing shortcuts.
@@ -340,6 +395,15 @@ completion menu or dialog is open. Do not steal ordinary editor typing shortcuts
 13. Search integrations by name/capability, filter categories, recover from no
     matches, and select with the keyboard. A large test catalog must scroll
     inside the picker rather than expand it into an unbounded card grid.
+14. Search the explorer for a resource in a collapsed branch, select it, then
+    clear the filter. Its parent path remains visible and unrelated branches
+    return to their prior state.
+15. Edit drafts in two resources of each tool and switch between them. Inputs
+    remain isolated; password/token controls and HTTP headers reset. Reload
+    clears window drafts.
+16. Inspect a NULL, document, Kafka message, and completed HTTP response. Copy a
+    value; copy a Kafka message to Publish without sending. Resize the explorer
+    with pointer and keyboard, then verify the narrow layout.
 
 The wireframe demonstrates layout only and does not validate these production
 behaviors. Verify them in Wails once real bindings and database operations exist.

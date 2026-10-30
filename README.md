@@ -27,6 +27,9 @@ installation workflow has been implemented yet.
 The developer's main learning focus is implementing the Go backend. Frontend
 work can proceed separately using the UI specification and agreed response
 fixtures. The prototype is a design aid and does not implement release features.
+It includes resource search, per-resource window drafts, breadcrumbs, value
+inspection, a resizable explorer, and Kafka copy-to-publish drafts. All tool
+operations still use fictional data and make no network requests.
 
 The proposed stack is Go, Wails, React/TypeScript, CodeMirror 6, `pgx`, and the
 official MongoDB Go driver. Kafka and HTTP integrations are future extensions.

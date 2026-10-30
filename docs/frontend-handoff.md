@@ -16,6 +16,20 @@ adapters and integration tests. These are proposed contracts, not existing APIs.
 Frontend validation improves feedback; Go validation remains authoritative. Go
 does not accept SQL/Find operations through one ambiguous string method.
 
+The prototype's explorer search filters already loaded resources and retains
+their ancestors. It does not imply that Go can search metadata that has not been
+loaded. The frontend owns search/expansion, window-only per-resource drafts, and
+layout dimensions; any later server-wide discovery needs an explicit backend
+contract. Scope draft keys by full connection/resource identity, not display name.
+Do not retain password/token inputs or raw HTTP header text in draft snapshots.
+Do not implicitly persist arbitrary editor content or automatically run restored
+drafts. Draft restoration and request/result lifecycle are separate state.
+
+Result inspection uses the original typed payload and source identity; never
+coerce a large integer just to display it. HTTP result metadata must capture the
+submitted method/URL instead of resolving the current edited draft. Kafka
+copy-to-publish fills a draft only and must never call the producer automatically.
+
 ## Proposed Wails surface
 
 | Operation | Inputs | Result |
