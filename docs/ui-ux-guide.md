@@ -273,6 +273,14 @@ Switching resource/connection discards late responses from the old selection.
 
 ## Visual and interaction guidelines
 
+- Use consistent local icons beside names in the explorer, integration catalog,
+  and configuration header: a cylinder for databases/PostgreSQL, a leaf for
+  MongoDB, connected nodes for Kafka, and code brackets for HTTP/API. These are
+  original pictograms, not official vendor logos. Schema, table, collection,
+  folder, topic, and request nodes have corresponding resource icons.
+- Keep text labels; hide decorative SVGs from assistive technology and keyboard
+  focus. Shape distinguishes integrations without relying on color. Plugin icon
+  keys select trusted local assets, with a generic plug fallback for unknown keys.
 - Default to a calm light workspace with a 300 px connection sidebar, resizable
   result/editor split, 8 px spacing scale, and restrained borders. Theme switching
   and saved splitter sizes are stretch goals.

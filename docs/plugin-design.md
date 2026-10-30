@@ -72,7 +72,9 @@ Add connection uses a searchable list of registered integration descriptors;
 avoid a fixed card grid or a separate global button for every plugin. Adding a
 descriptor should add a row without changing the picker layout. Each descriptor
 needs a stable ID/kind, display name, category, search keywords/capabilities,
-availability/compatibility state, and a configuration renderer/schema reference.
+availability/compatibility state, an optional trusted icon key, and a configuration
+renderer/schema reference. Unknown icon keys use a generic plug icon; never inject
+SVG/HTML or fetch remote assets supplied by an untrusted manifest.
 The backend remains authoritative about which integrations are available.
 
 Categories are derived from descriptors. Search/filter within a bounded scroll

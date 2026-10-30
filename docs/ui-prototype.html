@@ -32,6 +32,12 @@
     .tree-row:hover { background: #eaf0f6; }
     .tree-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .tree-kind { font-size: 10px; color: #53657a; margin-left: auto; }
+    .icon { display: inline-flex; width: 18px; height: 18px; flex: 0 0 18px; vertical-align: middle; color: #53657a; }
+    .icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .icon[data-icon="database"] { color: #306c9b; }
+    .icon[data-icon="mongo"] { color: #217749; }
+    .icon[data-icon="kafka"] { color: #65449c; }
+    .icon[data-icon="api"] { color: #2457c5; }
     .chevron { width: 12px; flex: 0 0 12px; color: #53657a; text-align: center; }
     [role="treeitem"][aria-expanded="true"] > .tree-row > .chevron { transform: rotate(90deg); }
     [role="treeitem"][aria-selected="true"] > .tree-row { color: #1e4ea8; background: #e3edff; font-weight: 600; }
@@ -82,6 +88,7 @@
     .integration-option strong { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .integration-option small { display: block; margin-top: 5px; color: #53657a; }
     .integration-stage { font-size: 11px; font-weight: 400; color: #53657a; }
+    .integration-identity, #selected-integration { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
     .integration-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; margin-bottom: 12px; border-bottom: 1px solid #d8e0ea; }
     .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
     .empty { padding: 24px; color: #53657a; }
@@ -225,11 +232,33 @@
     let profileSequence = 0;
     let dialogOpener = null;
     let selectedIntegration = null;
+    // Original local pictograms. Descriptor keys select trusted SVGs, never remote markup.
+    const iconPaths = {
+      database: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+      mongo: '<path d="M12 2C7 6 5 10 7 15c1 3 3 4 5 5 2-1 4-2 5-5 2-5 0-9-5-13Z"/><path d="M12 7v15M12 14l3-3M12 17l-3-3"/>',
+      kafka: '<circle cx="8" cy="5" r="3"/><circle cx="8" cy="19" r="3"/><circle cx="18" cy="12" r="3"/><path d="M8 8v8M10.5 6.7l5 3.6M10.5 17.3l5-3.6"/>',
+      api: '<path d="m7 5-5 7 5 7M17 5l5 7-5 7M14 4l-4 16"/>',
+      schema: '<rect x="9" y="2" width="6" height="5" rx="1"/><rect x="2" y="17" width="6" height="5" rx="1"/><rect x="16" y="17" width="6" height="5" rx="1"/><path d="M12 7v5M5 17v-5h14v5"/>',
+      table: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M3 14h18M9 9v11M15 9v11"/>',
+      collection: '<rect x="7" y="7" width="14" height="15" rx="2"/><path d="M17 7V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3M11 12h6M11 16h6"/>',
+      folder: '<path d="M3 6a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>',
+      topic: '<circle cx="4" cy="6" r="2"/><circle cx="4" cy="12" r="2"/><circle cx="4" cy="18" r="2"/><path d="M9 6h12M9 12h12M9 18h12"/>',
+      request: '<path d="M3 7h14m-4-4 4 4-4 4M21 17H7m4-4-4 4 4 4"/>',
+      plugin: '<path d="M8 2v5M16 2v5M5 7h14v4a7 7 0 0 1-14 0ZM12 18v4"/>'
+    };
+    function createIcon(key) {
+      const safeKey = Object.hasOwn(iconPaths, key) ? key : 'plugin';
+      const icon = document.createElement('span'); icon.className = 'icon';
+      icon.dataset.icon = safeKey; icon.setAttribute('aria-hidden', 'true');
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('focusable', 'false');
+      svg.innerHTML = iconPaths[safeKey]; icon.append(svg); return icon;
+    }
     const integrationCatalog = [
-      { id: 'postgres', kind: 'postgres', name: 'PostgreSQL', category: 'database', stage: 'Release 0.0.1', capabilities: ['sql', 'schema', 'tables'], description: 'Browse schemas and tables; execute SQL.', formKey: 'postgres', treeRoot: 'postgres' },
-      { id: 'mongo', kind: 'mongo', name: 'MongoDB', category: 'database', stage: 'Release 0.0.1', capabilities: ['documents', 'find', 'collections'], description: 'Browse collections; filter and inspect documents.', formKey: 'mongo', treeRoot: 'mongo' },
-      { id: 'kafka', kind: 'kafka', name: 'Kafka', category: 'messaging', stage: 'Future design', capabilities: ['consume', 'publish', 'produce', 'topics'], description: 'Consume topic messages and publish records.', formKey: 'kafka', treeRoot: 'kafka' },
-      { id: 'http', kind: 'http', name: 'HTTP', category: 'api', stage: 'Future design', capabilities: ['requests', 'rest', 'send', 'response'], description: 'Compose API requests and inspect responses.', formKey: 'http', treeRoot: 'http' }
+      { id: 'postgres', kind: 'postgres', name: 'PostgreSQL', icon: 'database', category: 'database', stage: 'Release 0.0.1', capabilities: ['sql', 'schema', 'tables'], description: 'Browse schemas and tables; execute SQL.', formKey: 'postgres', treeRoot: 'postgres' },
+      { id: 'mongo', kind: 'mongo', name: 'MongoDB', icon: 'mongo', category: 'database', stage: 'Release 0.0.1', capabilities: ['documents', 'find', 'collections'], description: 'Browse collections; filter and inspect documents.', formKey: 'mongo', treeRoot: 'mongo' },
+      { id: 'kafka', kind: 'kafka', name: 'Kafka', icon: 'kafka', category: 'messaging', stage: 'Future design', capabilities: ['consume', 'publish', 'produce', 'topics'], description: 'Consume topic messages and publish records.', formKey: 'kafka', treeRoot: 'kafka' },
+      { id: 'http', kind: 'http', name: 'HTTP', icon: 'api', category: 'api', stage: 'Future design', capabilities: ['requests', 'rest', 'send', 'response'], description: 'Compose API requests and inspect responses.', formKey: 'http', treeRoot: 'http' }
     ];
     const samples = {
       postgres: {
@@ -262,7 +291,7 @@
       'http-orders': { kind: 'http', resource: 'POST /orders', target: 'Example API', method: 'POST', url: 'https://api.example.test/orders' }
     };
     const hierarchy = [
-      { id: 'postgres', label: 'Local PostgreSQL', type: 'connection', children: [
+      { id: 'postgres', label: 'Local PostgreSQL', icon: 'database', type: 'connection', children: [
         { id: 'pg-appdb', label: 'appdb', type: 'database', children: [
           { id: 'pg-public', label: 'public', type: 'schema', children: [
             { id: 'pg-users', label: 'users', type: 'table' },
@@ -270,19 +299,19 @@
           ] }
         ] }
       ] },
-      { id: 'mongo', label: 'Local MongoDB', type: 'connection', children: [
+      { id: 'mongo', label: 'Local MongoDB', icon: 'mongo', type: 'connection', children: [
         { id: 'mongo-shop', label: 'shop', type: 'database', children: [
           { id: 'mongo-customers', label: 'customers', type: 'collection' },
           { id: 'mongo-orders', label: 'orders', type: 'collection' }
         ] }
       ] },
-      { id: 'kafka', label: 'Development Kafka', type: 'future', children: [
+      { id: 'kafka', label: 'Development Kafka', icon: 'kafka', type: 'future', children: [
         { id: 'kafka-topics', label: 'Topics', type: 'folder', children: [
           { id: 'kafka-orders', label: 'orders.created', type: 'topic' },
           { id: 'kafka-payments', label: 'payments.received', type: 'topic' }
         ] }
       ] },
-      { id: 'http', label: 'Example API', type: 'future', children: [
+      { id: 'http', label: 'Example API', icon: 'api', type: 'future', children: [
         { id: 'http-requests', label: 'Requests', type: 'folder', children: [
           { id: 'http-health', label: 'GET /health', type: 'request' },
           { id: 'http-orders', label: 'POST /orders', type: 'request' }
@@ -306,7 +335,7 @@
         label.className = 'tree-label'; label.textContent = node.label;
         const type = document.createElement('span'); type.className = 'tree-kind';
         type.textContent = node.type; type.setAttribute('aria-hidden', 'true');
-        row.append(chevron, label, type); item.append(row);
+        row.append(chevron, createIcon(node.icon || node.type), label, type); item.append(row);
         if (node.children) {
           // Both branches stay in place; opening one never moves the other's children.
           const group = document.createElement('ul'); group.id = node.id + '-children';
@@ -437,7 +466,8 @@
         const heading = document.createElement('strong');
         const name = document.createElement('span'); name.textContent = entry.name;
         const stage = document.createElement('span'); stage.className = 'integration-stage'; stage.textContent = entry.stage;
-        heading.append(name, stage);
+        const identity = document.createElement('span'); identity.className = 'integration-identity';
+        identity.append(createIcon(entry.icon), name); heading.append(identity, stage);
         const detail = document.createElement('small'); detail.textContent = entry.description;
         button.append(heading, detail); item.append(button); $('integration-list').append(item);
         button.addEventListener('click', () => chooseType(entry.id));
@@ -459,7 +489,7 @@
       }
       selectedIntegration = entry; dialogKind = entry.kind;
       $('integration-picker').hidden = true; $('integration-config').hidden = false;
-      $('selected-integration').textContent = entry.name + ' · ' + entry.stage;
+      $('selected-integration').replaceChildren(createIcon(entry.icon), document.createTextNode(entry.name + ' · ' + entry.stage));
       $('connection-title').textContent = 'Configure ' + entry.name;
       $('connection-form').reset(); $('profile-name').setCustomValidity('');
       $('profile-name').value = 'New ' + entry.name;
