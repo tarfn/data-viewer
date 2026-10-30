@@ -13,6 +13,8 @@ clear place to live.
 Each adapter has a stable kind (`postgres` or `mongo`), display name, and supported
 capabilities. Keep descriptors separate from saved connection profiles. A profile
 references its kind; it does not embed executable paths or arbitrary code.
+See [the domain model](domain-model.md) for descriptor/profile/session separation
+and [the architecture](architecture.md) for application ownership.
 
 | Capability | PostgreSQL | MongoDB | Later integrations |
 | --- | --- | --- | --- |
@@ -20,6 +22,7 @@ references its kind; it does not embed executable paths or arbitrary code.
 | Browse resources | Schemas/tables | Databases/collections | Kafka topics |
 | SQL query | Yes | No | Other SQL databases |
 | Document Find | No | Yes | Other document databases if semantics fit |
+| Native database command console | No | Gated on a supported-command contract | Per-adapter semantics; never JavaScript evaluation |
 | Structure metadata | Declared schema | Sampled observations | Integration-specific |
 | Completion candidates | SQL names/keywords | Operators/observed fields | Integration-specific |
 | Stream messages | No | No | Kafka |
@@ -78,6 +81,10 @@ index item is disabled and makes no request.
 Only show menus where registered actions apply. Connection roots, schemas, and
 grouping folders currently have none. Databases offer console creation directly,
 not a generic Open in Tab or overview page. Data resources offer Open in Tab.
+Connection roots separately expose the direct Edit connection pencil. Its form
+renderer comes from the profile's registered adapter and cannot switch adapters
+during editing. Saving typed settings does not invoke the session factory or
+any query capability. Future plugins must preserve this separation too.
 
 ## Catalog and connection setup UI
 
@@ -106,9 +113,15 @@ trust remain separate, deferred workflows.
 ## Ownership and failure behavior
 
 - Connection manager owns session creation, lookup, disconnect, and shutdown.
+- Profile store owns non-secret settings and config revisions, independently of sessions.
 - Adapters own driver calls, data conversion, metadata, and cursor cleanup.
 - Application layer owns deadlines, request IDs, safe errors, and output caps.
 - Frontend owns rendering and user intent, never raw driver objects.
+
+Sessions capture profile settings at Connect; operations capture session/resource
+identity at Run. Menu descriptors only request actions; they cannot mutate those
+identities. Metadata caches and completion candidates belong to a session and
+structured path, not an adapter name or globally selected explorer row.
 
 Cancellation propagates through every adapter operation. Failed connection
 attempts clean up partial clients. Disconnect prevents new operations, cancels

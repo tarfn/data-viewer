@@ -184,6 +184,9 @@ Do not show a fake connected database or working results on first launch.
 
 ### 2. Add or edit a connection
 
+For implementation, use the [domain model](domain-model.md) to distinguish saved
+profiles from active sessions, explorer selection, tabs, and requests.
+
 Each connection root has an always-visible **pencil — Edit connection** button
 beside its name, including PostgreSQL, MongoDB, Kafka, and HTTP. This is a direct
 action, not a parent context menu. Row clicks still only select/expand. The pencil
@@ -238,6 +241,11 @@ saved profile with a raw credential-bearing URI.
 Test does not create a lasting active session. Show Connecting while testing or
 opening; prevent duplicate submissions and offer cancellation for slow attempts.
 Use the same backend validation for Test and Connect.
+In the production form, expose Connect/Disconnect and current session status
+separately from Save; the prototype only has local validation/save controls.
+Settings changed during a session apply on the next connection. Disconnected
+tabs keep drafts/results labeled with the old source and disable Run. Reconnect
+creates a fresh session; do not silently rebind old tabs or add a root action menu.
 
 For future Kafka setup, show bootstrap servers and security protocol first,
 revealing SASL mechanism/username/password only when SASL is enabled. TLS trust
@@ -396,7 +404,11 @@ and bound response memory. Cancel does not undo an already completed mutation.
 
 If old results remain after a failure, label them **Previous result** with their
 target and execution time. Do not show stale data as the latest successful result.
-Switching resource/connection discards late responses from the old selection.
+Database completion belongs to the originating open tab and latest request,
+even while that tab is inactive. Explorer selection does not invalidate it.
+Close/disconnect prevents late success from restoring a tab or marking a closed
+session active. The Kafka/HTTP prototype instead cancels tool simulations when
+navigating away; future streaming/request lifecycles need their own contracts.
 
 ## Visual and interaction guidelines
 

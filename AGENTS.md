@@ -64,6 +64,15 @@ screens, and prototype behavior are not shipped features. Do not scaffold the
 application during documentation-only tasks. Update this status as implementation
 lands rather than treating planning-stage assumptions as permanent.
 
+Use [the domain model](docs/domain-model.md) when implementing or reviewing UI
+behavior. Profile IDs, live session IDs (`connectionId`), resource references,
+tab/console IDs, and request IDs have separate lifetimes. Saving profile settings
+never mutates an active session. Route results to the originating open tab and
+latest matching request, even while inactive; explorer selection is not a result
+invalidation key. Reconnect creates a fresh session ID without rebinding old tabs.
+The [beginner guide](docs/implementation-guide.md) orders backend-first slices;
+MongoDB command execution remains a separate capability gate, Kafka/HTTP future.
+
 Keep changes focused on the requested feature. Use the existing checkout;
 create branches as requested. Preserve unrelated changes. Never commit secrets
 or connection strings containing credentials.

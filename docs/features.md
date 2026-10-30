@@ -16,7 +16,7 @@ needed for release 0.0.1; stretch means cut it before moving the release date.
 | PG-03 | SQL query console | Required design; UI prototyped | Execute one statement with explicit connection/database/request IDs | Database → New → Query Console opens separate SQL tab | Target stable; results preserve duplicate columns, NULL, large integers |
 | MG-01 | Database/collection explorer | Required | List permitted databases and collections | Tree navigation | Authorized collections appear; permission errors remain visible |
 | MG-02 | Find operation | Required | Parse filter/projection/sort, bound limit, iterate cursor | Collection Data view with JSON text filter; advanced Find options planned | Known filter returns expected documents; invalid JSON gets a clear error |
-| MG-04 | Database command console | Requested design; UI prototyped | Separate authorized native-command contract, not JavaScript evaluation | Database → New → Query Console opens JSON command editor | Command object/target explicit; no mongosh scripts; results still simulated |
+| MG-04 | Database command console | Requested design; UI prototyped; production capability gated | Separate supported-command contract with database identity, bounds and cancel; no JavaScript evaluation | Database → New → Query Console opens JSON command editor; unavailable until capability ready | Unsupported commands rejected in Go; captured target; bounded typed results and timeout/cancel verified against MongoDB; prototype results remain simulated |
 | MG-03 | Sampled fields | Required | Sample up to 100 documents; merge observed paths/types | Label sample size and uncertainty | Mixed field types are visible; empty collections infer no fields |
 | EDT-01 | Basic autocomplete | Required | Cache metadata; provide typed completion candidates | CodeMirror completion menus and keyboard behavior | Suggestions follow active connection and refresh after metadata changes |
 | RUN-01 | Timeout and cancellation | Required | Context deadline, request registry, cancellation, cleanup | Running/Cancel states, elapsed time | Slow operation cancels; subsequent execution still works |
@@ -46,4 +46,6 @@ write if the database account permits it; do not label the application universal
 read-only. Prefer read-only sample credentials during development.
 
 See [UX](ui-ux-guide.md), [backend/frontend handoff](frontend-handoff.md), and
-[plugin design](plugin-design.md) for implementation boundaries.
+[plugin design](plugin-design.md) for implementation boundaries. The
+[domain model](domain-model.md) specifies IDs, ownership, and lifecycle invariants
+used by the [development sequence](implementation-guide.md#turn-the-ui-into-small-implementation-tasks).

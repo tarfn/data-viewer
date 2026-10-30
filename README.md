@@ -12,6 +12,7 @@ installation workflow has been implemented yet.
 
 - [Release plan and weekly milestones](docs/release-0.0.1-plan.md)
 - [Architecture and feature design](docs/architecture.md)
+- [Domain model, identities, and workspace lifecycle](docs/domain-model.md)
 - [Beginner implementation guide](docs/implementation-guide.md)
 - [Feature inventory and ownership](docs/features.md)
 - [Integration plugin design](docs/plugin-design.md)

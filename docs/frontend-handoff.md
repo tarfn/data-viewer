@@ -5,6 +5,8 @@
 The developer owns Go database behavior. A separate frontend implementation can
 use the [UX guide](ui-ux-guide.md) and mock responses while the Go developer builds
 adapters and integration tests. These are proposed contracts, not existing APIs.
+The [domain model](domain-model.md) is the shared reference for identity, ownership,
+and state transitions; do not infer them from the prototype's fixture variables.
 
 | Go/backend owns | Frontend owns | Agree together |
 | --- | --- | --- |
@@ -78,12 +80,14 @@ session persistence. Kafka/HTTP still cancel on navigation in this prototype.
 | --- | --- | --- |
 | ListAdapters | None | Stable IDs/kinds, names, categories, keywords/capability IDs, compatibility/availability, config renderer/schema references |
 | ListProfiles / SaveProfile / DeleteProfile | Non-secret profile fields or profile ID | Non-secret profiles |
+| PreviewTable | Connection/request IDs, structured table reference, filter expression, execution options | Bounded ordered typed rows or safe error; separate from free SQL |
 | TestConnection | Runtime connection config and credentials | Success or safe structured error; no retained session |
 | Connect | Runtime config and credentials | Connection ID, kind, display target, capabilities |
 | Disconnect | Connection ID | Completed lifecycle cleanup or safe error |
 | ListResources / DescribeResource | Connection ID and typed resource path | Resource tree or schema/sampled metadata |
 | ExecuteSQL | Connection ID, request ID, SQL, execution options | SQL result or safe error |
 | FindDocuments | Connection ID, request ID, Find inputs/options | Extended JSON documents or safe error |
+| ExecuteMongoCommand (gated) | Connection/request IDs, explicit database, supported command JSON, limits | Capability-specific bounded result; reject unsupported commands; no JavaScript |
 | GetCompletions | Connection ID, resource path, language | Cached metadata candidates |
 | RefreshMetadata | Connection ID and resource path | Refreshed metadata |
 | CancelRequest | Connection ID and request ID | Cancellation requested, or already finished/unknown |
@@ -92,11 +96,21 @@ Operation names are illustrative. Prefer explicit methods over untyped generic
 dispatch. Give resource paths separate database, schema, and table/collection
 fields rather than splitting a display label on dots.
 
+`profileId` identifies stored configuration; `connectionId` identifies an active
+session created from a config snapshot. SaveProfile accepts the fixed adapter ID
+and its typed non-secret settings; it returns the profile ID/config revision, not
+a new session. Connect returns a fresh connection ID and captured config revision.
+The frontend owns tab IDs. Each execution passes a new request ID and the tab's
+structured target; keep a frontend request-to-tab association. Results include
+request/session/target identity. Never derive target IDs from display names or
+retrieve current profile settings when dispatching an already-bound tab's query.
+
 Explorer nodes are nested under their owning connection/database, as specified
 in the [UX hierarchy](ui-ux-guide.md). Fetch children on first branch expansion
 using the full parent path; cache and track loading/error/expanded state per
 node. Expanding/collapsing a branch is navigation, not a request to retarget the
-active execution workspace. Only selecting a resource changes that target.
+active execution workspace. Only explicit Open in Tab/New Query Console actions
+or activating an already-bound tab change which workspace is displayed.
 
 Completion candidates should include label, insertion text, kind, and detail.
 Frontend filters cached candidates per keystroke. Metadata responses include a
@@ -113,9 +127,15 @@ registration race. Do not persist request IDs or credentials.
 
 Go applies a timeout to each context and sends a terminal result for success,
 failure, cancellation, or timeout. Cancel's acknowledgement does not mean cleanup
-is finished; the terminal result does. Ignore late responses using the request ID
-and a workspace selection generation, especially after navigation/disconnect.
-Never resolve the destination from the sidebar's current selection after Run.
+is finished; the terminal result does. Match output to its originating open tab,
+latest request ID, and captured session/target. An inactive tab still accepts its
+own database completion; changing explorer selection does not invalidate it.
+Drop late success for a closed tab or disconnected session, and preserve the
+disconnected status and original result source. Never resolve the destination
+from the sidebar's current selection after Run.
+If close occurs before start acknowledgement, retain the pending request ID long
+enough to cancel it after registration, then remove it on terminal completion.
+Keep this cleanup record separate from the closed tab so no UI is recreated.
 
 Set a default timeout (initial proposal: 30 seconds), preview limit (100), and
 hard row/document and byte maxima in Go. The UI displays effective values;
