@@ -11,6 +11,9 @@ Your primary focus can stay on Go. Implement and test each backend capability
 against the [handoff contract](frontend-handoff.md). Frontend work can be completed
 separately using the [UI/UX guide](ui-ux-guide.md) and interactive wireframe.
 Review backend completion and full desktop completion as separate milestones.
+The module, Wails shell, and React preview are now initialized. Use
+[development setup](development.md) to run them; the steps below describe the
+remaining real backend work, not instructions to replace the existing scaffold.
 
 ## Turn the UI into small implementation tasks
 
@@ -35,7 +38,8 @@ Kafka consume/publish and HTTP remain future slices after the database release.
 
 ## 1. Connect from a Go program
 
-Create a Go module and a temporary CLI entry point before adding a desktop UI.
+Use the existing Go module and add a temporary CLI under `cmd/experiments`
+without replacing the Wails `main.go` entry point.
 Read credentials from local runtime configuration without committing them.
 
 For PostgreSQL:
@@ -64,9 +68,9 @@ clear errors without hanging.
 
 ## 2. Add one desktop connection flow
 
-Follow the supported Wails setup for the selected OS, then generate a React and
-TypeScript application. Verify the generated starter runs before changing it.
-Move working database code into `internal/postgres` and `internal/mongo`.
+Use the initialized Wails/React shell and existing fixture-based forms. Verify
+the [development commands](development.md) on the chosen OS, then move working
+database code into `internal/postgres` and `internal/mongo` as those slices land.
 
 Start with two registered integration descriptors and an in-memory profile store.
 Use concrete settings structs; keep credentials separate. The searchable catalog
@@ -110,8 +114,9 @@ path. Test cancellation during execution and disconnect, including concurrent
 cleanup, without holding a manager mutex across driver calls. Return captured
 request/session identity so the frontend can update an inactive tab correctly.
 
-The frontend can now implement resource-tab reuse, fresh console tabs, and an
-empty workspace. Close/Close all requests cancellation without disconnecting the
+The frontend already implements resource-tab reuse, fresh console tabs, and an
+empty workspace with mocks. Connect these to real request contracts. Close/Close
+all requests cancellation without disconnecting the
 profile. Ignore output for a closed tab or superseded request; keep valid results
 for inactive tabs. Retain only window drafts and clear console drafts on close.
 
@@ -167,7 +172,7 @@ and provides relevant completion suggestions after connecting.
 Add integration tests alongside the database packages and focused unit tests for
 value conversion, profile serialization, and sampled-field merging. Keep sample
 data reproducible. Document how to start local test databases and seed them once
-those scripts exist; this planning-only repository has no runnable setup yet.
+those scripts exist; the current UI setup does not provision database services.
 
 Run the Go tests and race detector, then manually check navigation, query
 cancellation, disconnects, large responses, and error states. Build for the

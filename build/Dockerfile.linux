@@ -1,0 +1,10 @@
+FROM debian:trixie-slim@sha256:f6b08b09a05725f9431502d3b5714f5c4576e82c1a84fa1debe0c24a7e0c3ec4
+RUN --mount=type=secret,id=proxy_ca,required=true,mode=0444 \
+    sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources && \
+    apt-get -o Acquire::https::CaInfo=/run/secrets/proxy_ca update && \
+    apt-get -o Acquire::https::CaInfo=/run/secrets/proxy_ca install -y --no-install-recommends \
+    ca-certificates build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev xvfb xauth dbus-x11 && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN useradd --uid 1000 --create-home builder
+USER builder

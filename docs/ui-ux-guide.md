@@ -14,6 +14,9 @@ Its contents are fictional and it performs no network requests or persistence.
 It now includes PostgreSQL/MongoDB creation forms and future Kafka/HTTP workspace
 designs. [Research and source evidence](ui-research.md) explain the choices and
 limitations. Kafka/HTTP production integrations remain outside release 0.0.1.
+The React implementation now covers these interactions with local mock services
+inside an initialized Wails shell. Use [development setup](development.md) to run
+it. The HTML wireframe remains a design reference, not the application's source.
 
 ## Workspace layout
 

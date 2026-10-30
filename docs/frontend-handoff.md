@@ -4,7 +4,9 @@
 
 The developer owns Go database behavior. A separate frontend implementation can
 use the [UX guide](ui-ux-guide.md) and mock responses while the Go developer builds
-adapters and integration tests. These are proposed contracts, not existing APIs.
+adapters and integration tests. The React preview now uses these interactions
+with local fixtures; only App.Info is bound to Go. The operation contracts below
+are proposed APIs to implement incrementally.
 The [domain model](domain-model.md) is the shared reference for identity, ownership,
 and state transitions; do not infer them from the prototype's fixture variables.
 

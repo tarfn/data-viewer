@@ -77,6 +77,11 @@ validation as working MongoDB command execution.
 
 ## Weekly milestones
 
+Current foundation: Go module/Wails shell, React components, generated metadata
+bridge, window-only mock profile editing, independent tabs, and frontend checks
+are in place. This does not complete the real Test/Connect/query milestones.
+See [development setup](development.md) for commands and implementation status.
+
 | Dates (2026) | Deliverable | Go learning focus | Demonstration |
 | --- | --- | --- | --- |
 | Oct 29–Nov 4 | Small PostgreSQL and MongoDB CLI experiments | Modules, structs, methods, errors, context | Print SQL rows and MongoDB documents; exit cleanly |
